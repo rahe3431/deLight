@@ -25,16 +25,18 @@
 #include "title_screen.h"
 #include "constants/rgb.h"
 #include "constants/battle_anim.h"
+#include "main_menu.h"
+#include "event_data.h"
 
 /*
-    The intro is grouped into the following scenes
-    Scene 0. Copyright screen
-    Scene 1. GF Logo, pan up over plants, Flygon silhouette goes by
-    Scene 2. Player biking on path, joined by Pokémon
-    Scene 3. A fight between Groudon/Kyogre ends with Rayquaza
-
-    After this it progresses to the title screen
-*/
+ *   The intro is grouped into the following scenes
+ *   Scene 0. Copyright screen
+ *   Scene 1. GF Logo, pan up over plants, Flygon silhouette goes by
+ *   Scene 2. Player biking on path, joined by Pokémon
+ *   Scene 3. A fight between Groudon/Kyogre ends with Rayquaza
+ *
+ *   After this it progresses to the title screen
+ */
 
 // Scene 1 main tasks
 static void Task_Scene1_Load(u8);
@@ -50,16 +52,16 @@ static void Task_BlendLogoIn(u8);
 static void Task_BlendLogoOut(u8);
 static void Task_CreateSparkles(u8);
 static u8 CreateWaterDrop(s16, s16, u16, u16, u16, u8);
-static void SpriteCB_WaterDrop(struct Sprite *sprite);
-static void SpriteCB_WaterDrop_Slide(struct Sprite *);
-static void SpriteCB_WaterDrop_ReachLeafEnd(struct Sprite *);
-static void SpriteCB_WaterDrop_DangleFromLeaf(struct Sprite *);
-static void SpriteCB_WaterDrop_Fall(struct Sprite *);
-static void SpriteCB_WaterDrop_Ripple(struct Sprite *);
-static void SpriteCB_Sparkle(struct Sprite *sprite);
-static void SpriteCB_LogoLetter(struct Sprite *sprite);
-static void SpriteCB_GameFreakLogo(struct Sprite *sprite);
-static void SpriteCB_FlygonSilhouette(struct Sprite *sprite);
+static void SpriteCB_WaterDrop(struct Sprite* sprite);
+static void SpriteCB_WaterDrop_Slide(struct Sprite*);
+static void SpriteCB_WaterDrop_ReachLeafEnd(struct Sprite*);
+static void SpriteCB_WaterDrop_DangleFromLeaf(struct Sprite*);
+static void SpriteCB_WaterDrop_Fall(struct Sprite*);
+static void SpriteCB_WaterDrop_Ripple(struct Sprite*);
+static void SpriteCB_Sparkle(struct Sprite* sprite);
+static void SpriteCB_LogoLetter(struct Sprite* sprite);
+static void SpriteCB_GameFreakLogo(struct Sprite* sprite);
+static void SpriteCB_FlygonSilhouette(struct Sprite* sprite);
 
 // Scene 2 main tasks
 static void Task_Scene2_Load(u8);
@@ -68,11 +70,11 @@ static void Task_Scene2_BikeRide(u8);
 static void Task_Scene2_End(u8);
 
 // Scene 2 supplemental functions
-static void SpriteCB_Torchic(struct Sprite *sprite);
-static void SpriteCB_Manectric(struct Sprite *sprite);
-static void SpriteCB_Volbeat(struct Sprite *sprite);
-static void SpriteCB_Flygon(struct Sprite *);
-static void SpriteCB_PlayerOnBicycle(struct Sprite *);
+static void SpriteCB_Torchic(struct Sprite* sprite);
+static void SpriteCB_Manectric(struct Sprite* sprite);
+static void SpriteCB_Volbeat(struct Sprite* sprite);
+static void SpriteCB_Flygon(struct Sprite*);
+static void SpriteCB_PlayerOnBicycle(struct Sprite*);
 
 // Scene 3 main tasks
 static void Task_Scene3_Load(u8);
@@ -101,22 +103,16 @@ static void CreateGroudonRockSprites(u8);
 static void CreateKyogreBubbleSprites_Body(u8);
 static void CreateKyogreBubbleSprites_Fins(void);
 static void Task_RayquazaAttack(u8);
-static void SpriteCB_GroudonRocks(struct Sprite *);
-static void SpriteCB_KyogreBubbles(struct Sprite *sprite);
-static void SpriteCB_Lightning(struct Sprite *sprite);
-static void SpriteCB_RayquazaOrb(struct Sprite *sprite);
+static void SpriteCB_GroudonRocks(struct Sprite*);
+static void SpriteCB_KyogreBubbles(struct Sprite* sprite);
+static void SpriteCB_Lightning(struct Sprite* sprite);
+static void SpriteCB_RayquazaOrb(struct Sprite* sprite);
 
 static void MainCB2_EndIntro(void);
 
 extern const struct CompressedSpriteSheet gBattleAnimPicTable[];
 extern const struct CompressedSpritePalette gBattleAnimPaletteTable[];
-extern const struct SpriteTemplate gAncientPowerRockSpriteTemplate;
-
-enum {
-    COPYRIGHT_INITIALIZE,
-    COPYRIGHT_START_FADE = 140,
-    COPYRIGHT_START_INTRO,
-};
+extern const struct SpriteTemplate gAncientPowerRockSpriteTemplate[];
 
 #define TAG_VOLBEAT   1500
 #define TAG_TORCHIC   1501
@@ -139,11 +135,11 @@ enum {
 #define sState data[0]
 
 /*
-    gIntroFrameCounter is used as a persistent timer throughout the
-    intro cinematic. At various points it's used to determine when
-    to trigger actions or progress through the cutscene.
-    The values for these are defined contiguously below.
-*/
+ *   gIntroFrameCounter is used as a persistent timer throughout the
+ *   intro cinematic. At various points it's used to determine when
+ *   to trigger actions or progress through the cutscene.
+ *   The values for these are defined contiguously below.
+ */
 #define TIMER_BIG_DROP_START             76
 #define TIMER_LOGO_APPEAR               128
 #define TIMER_LOGO_LETTERS_COLOR        144
@@ -178,29 +174,29 @@ static EWRAM_DATA u16 sIntroCharacterGender = 0;
 static EWRAM_DATA u16 UNUSED sUnusedVar = 0;
 static EWRAM_DATA u16 sFlygonYOffset = 0;
 
-COMMON_DATA u32 gIntroFrameCounter = 0;
-COMMON_DATA struct GcmbStruct gMultibootProgramStruct = {0};
+u32 gIntroFrameCounter;
+struct GcmbStruct gMultibootProgramStruct;
 
-static const u16 sIntroDrops_Pal[]            = INCBIN_U16("graphics/intro/scene_1/drops.gbapal");
-static const u16 sIntroLogo_Pal[]             = INCBIN_U16("graphics/intro/scene_1/logo.gbapal");
-static const u32 sIntroDropsLogo_Gfx[]        = INCBIN_U32("graphics/intro/scene_1/drops_logo.4bpp.lz");
-static const u16 sIntro1Bg_Pal[]              = INCBIN_U16("graphics/intro/scene_1/bg.gbapal"); // 16 x 16
-static const u32 sIntro1Bg0_Tilemap[]         = INCBIN_U32("graphics/intro/scene_1/bg0_map.bin.lz");
-static const u32 sIntro1Bg1_Tilemap[]         = INCBIN_U32("graphics/intro/scene_1/bg1_map.bin.lz");
-static const u32 sIntro1Bg2_Tilemap[]         = INCBIN_U32("graphics/intro/scene_1/bg2_map.bin.lz");
-static const u32 sIntro1Bg3_Tilemap[]         = INCBIN_U32("graphics/intro/scene_1/bg3_map.bin.lz");
-static const u32 sIntro1Bg_Gfx[]              = INCBIN_U32("graphics/intro/scene_1/bg.4bpp.lz");
-static const u16 sIntroPokeball_Pal[]         = INCBIN_U16("graphics/intro/scene_3/pokeball.gbapal");
-static const u32 sIntroPokeball_Tilemap[]     = INCBIN_U32("graphics/intro/scene_3/pokeball_map.bin.lz");
-static const u32 sIntroPokeball_Gfx[]         = INCBIN_U32("graphics/intro/scene_3/pokeball.8bpp.lz");
-static const u16 sIntroStreaks_Pal[]          = INCBIN_U16("graphics/intro/scene_3/streaks.gbapal"); // Unused
-static const u32 sIntroStreaks_Gfx[]          = INCBIN_U32("graphics/intro/scene_3/streaks.4bpp.lz"); // Unused
-static const u32 sIntroStreaks_Tilemap[]      = INCBIN_U32("graphics/intro/scene_3/streaks_map.bin.lz"); // Unused
-static const u16 sIntroRayquzaOrb_Pal[]       = INCBIN_U16("graphics/intro/scene_3/rayquaza_orb.gbapal");
-static const u16 sIntroMisc_Pal[]             = INCBIN_U16("graphics/intro/scene_3/misc.gbapal"); // Unused
-static const u32 sIntroMisc_Gfx[]             = INCBIN_U32("graphics/intro/scene_3/misc.4bpp.lz"); // Rayquza orb, and misc unused gfx
+static const u16 sIntroDrops_Pal[] = INCBIN_U16("graphics/intro/scene_1/drops.gbapal");
+static const u16 sIntroLogo_Pal[] = INCBIN_U16("graphics/intro/scene_1/logo.gbapal");
+static const u32 sIntroDropsLogo_Gfx[] = INCBIN_U32("graphics/intro/scene_1/drops_logo.4bpp.lz");
+static const u16 sIntro1Bg_Pal[] = INCBIN_U16("graphics/intro/scene_1/bg.gbapal"); // 16 x 16
+static const u32 sIntro1Bg0_Tilemap[] = INCBIN_U32("graphics/intro/scene_1/bg0_map.bin.lz");
+static const u32 sIntro1Bg1_Tilemap[] = INCBIN_U32("graphics/intro/scene_1/bg1_map.bin.lz");
+static const u32 sIntro1Bg2_Tilemap[] = INCBIN_U32("graphics/intro/scene_1/bg2_map.bin.lz");
+static const u32 sIntro1Bg3_Tilemap[] = INCBIN_U32("graphics/intro/scene_1/bg3_map.bin.lz");
+static const u32 sIntro1Bg_Gfx[] = INCBIN_U32("graphics/intro/scene_1/bg.4bpp.lz");
+static const u16 sIntroPokeball_Pal[] = INCBIN_U16("graphics/intro/scene_3/pokeball.gbapal");
+static const u32 sIntroPokeball_Tilemap[] = INCBIN_U32("graphics/intro/scene_3/pokeball_map.bin.lz");
+static const u32 sIntroPokeball_Gfx[] = INCBIN_U32("graphics/intro/scene_3/pokeball.8bpp.lz");
+static const u16 sIntroStreaks_Pal[] = INCBIN_U16("graphics/intro/scene_3/streaks.gbapal"); // Unused
+static const u32 sIntroStreaks_Gfx[] = INCBIN_U32("graphics/intro/scene_3/streaks.4bpp.lz"); // Unused
+static const u32 sIntroStreaks_Tilemap[] = INCBIN_U32("graphics/intro/scene_3/streaks_map.bin.lz"); // Unused
+static const u16 sIntroRayquzaOrb_Pal[] = INCBIN_U16("graphics/intro/scene_3/rayquaza_orb.gbapal");
+static const u16 sIntroMisc_Pal[] = INCBIN_U16("graphics/intro/scene_3/misc.gbapal"); // Unused
+static const u32 sIntroMisc_Gfx[] = INCBIN_U32("graphics/intro/scene_3/misc.4bpp.lz"); // Rayquza orb, and misc unused gfx
 static const u16 sIntroFlygonSilhouette_Pal[] = INCBIN_U16("graphics/intro/scene_1/flygon.gbapal");
-static const u32 sIntroLati_Gfx[]             = INCBIN_U32("graphics/intro/scene_1/lati.4bpp.lz"); // Unused
+static const u32 sIntroLati_Gfx[] = INCBIN_U32("graphics/intro/scene_1/lati.4bpp.lz"); // Unused
 static const u8 sUnusedData[] = {
     0x02, 0x03, 0x04, 0x05, 0x01, 0x01, 0x01, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x02, 0x0D,
     0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x02, 0x0D, 0x0E, 0x0F,
@@ -242,7 +238,7 @@ static const union AnimCmd sAnim_Sparkle[] =
     ANIMCMD_FRAME(16, 2),
     ANIMCMD_JUMP(0),
 };
-static const union AnimCmd *const sAnims_Sparkle[] =
+static const union AnimCmd* const sAnims_Sparkle[] =
 {
     sAnim_Sparkle,
 };
@@ -307,7 +303,7 @@ static const union AnimCmd sAnim_Volbeat[] =
     ANIMCMD_FRAME(16, 2),
     ANIMCMD_JUMP(0),
 };
-static const union AnimCmd *const sAnims_Volbeat[] =
+static const union AnimCmd* const sAnims_Volbeat[] =
 {
     sAnim_Volbeat,
 };
@@ -365,10 +361,10 @@ enum {
     TORCHIC_ANIM_RUN,
     TORCHIC_ANIM_TRIP,
 };
-static const union AnimCmd *const sAnims_Torchic[] =
+static const union AnimCmd* const sAnims_Torchic[] =
 {
     [TORCHIC_ANIM_WALK] = sAnim_Torchic_Walk,
-    [TORCHIC_ANIM_RUN]  = sAnim_Torchic_Run,
+    [TORCHIC_ANIM_RUN] = sAnim_Torchic_Run,
     [TORCHIC_ANIM_TRIP] = sAnim_Torchic_Trip,
 };
 static const struct SpriteTemplate sSpriteTemplate_Torchic =
@@ -405,7 +401,7 @@ static const union AnimCmd sAnim_Manectric[] =
     ANIMCMD_FRAME(192, 4),
     ANIMCMD_JUMP(0),
 };
-static const union AnimCmd *const sAnims_Manectric[] =
+static const union AnimCmd* const sAnims_Manectric[] =
 {
     sAnim_Manectric,
 };
@@ -463,7 +459,7 @@ static const union AnimCmd sAnim_Lightning_Bottom[] =
     ANIMCMD_FRAME(80, 2),
     ANIMCMD_END,
 };
-static const union AnimCmd *const sAnims_Lightning[] =
+static const union AnimCmd* const sAnims_Lightning[] =
 {
     sAnim_Lightning_Top,
     sAnim_Lightning_Middle,
@@ -545,7 +541,7 @@ static const union AnimCmd sAnim_Bubbles[] =
     ANIMCMD_FRAME(32, 4),
     ANIMCMD_END,
 };
-static const union AnimCmd *const sAnims_Bubbles[] =
+static const union AnimCmd* const sAnims_Bubbles[] =
 {
     sAnim_Bubbles,
 };
@@ -601,12 +597,12 @@ static const union AnimCmd sAnim_WaterDrop_Ripple[] =
     ANIMCMD_FRAME(48, 8),
     ANIMCMD_END,
 };
-static const union AnimCmd *const sAnims_WaterDrop[] =
+static const union AnimCmd* const sAnims_WaterDrop[] =
 {
     [DROP_ANIM_UPPER_HALF] = sAnim_WaterDrop_UpperHalf,
     [DROP_ANIM_LOWER_HALF] = sAnim_WaterDrop_LowerHalf,
     [DROP_ANIM_REFLECTION] = sAnim_WaterDrop_Reflection,
-    [DROP_ANIM_RIPPLE]     = sAnim_WaterDrop_Ripple,
+    [DROP_ANIM_RIPPLE] = sAnim_WaterDrop_Ripple,
 };
 static const struct SpriteTemplate sSpriteTemplate_WaterDrop =
 {
@@ -654,7 +650,7 @@ static const union AnimCmd sAnim_PlayerBicycle_LookForward[] =
     ANIMCMD_FRAME(256, 16),
     ANIMCMD_END,
 };
-static const union AnimCmd *const sAnims_PlayerBicycle[] =
+static const union AnimCmd* const sAnims_PlayerBicycle[] =
 {
     sAnim_PlayerBicycle_Fast,
     sAnim_PlayerBicycle_Slow,
@@ -797,7 +793,7 @@ enum {
     PRESENTS_N,
     PRESENTS_T,
 };
-static const union AnimCmd *const sAnims_GameFreakLetter[] =
+static const union AnimCmd* const sAnims_GameFreakLetter[] =
 {
     [GAMEFREAK_G] = sAnim_GameFreakLetter_G,
     [GAMEFREAK_A] = sAnim_GameFreakLetter_A,
@@ -807,7 +803,7 @@ static const union AnimCmd *const sAnims_GameFreakLetter[] =
     [GAMEFREAK_R] = sAnim_GameFreakLetter_R,
     [GAMEFREAK_K] = sAnim_GameFreakLetter_K,
 };
-static const union AnimCmd *const sAnims_PresentsLetter[] =
+static const union AnimCmd* const sAnims_PresentsLetter[] =
 {
     [PRESENTS_P] = sAnim_PresentsLetter_P,
     [PRESENTS_R] = sAnim_PresentsLetter_R,
@@ -816,7 +812,7 @@ static const union AnimCmd *const sAnims_PresentsLetter[] =
     [PRESENTS_N] = sAnim_PresentsLetter_N,
     [PRESENTS_T] = sAnim_PresentsLetter_T,
 };
-static const union AnimCmd *const sAnims_GameFreakLogo[] =
+static const union AnimCmd* const sAnims_GameFreakLogo[] =
 {
     sAnim_GameFreakLogo,
 };
@@ -870,7 +866,7 @@ static const union AffineAnimCmd sAffineAnim_GameFreak_GrowMedium[] =
     AFFINEANIMCMD_FRAME(2, 2, 0, 48),
     AFFINEANIMCMD_END,
 };
-static const union AffineAnimCmd *const sAffineAnims_GameFreak[] =
+static const union AffineAnimCmd* const sAffineAnims_GameFreak[] =
 {
     sAffineAnim_GameFreak_Small,         // Initialize letters while still invisible
     sAffineAnim_GameFreak_GrowAndShrink, // For letters appearing. Logo does this too, but while it's invisible
@@ -882,9 +878,9 @@ static const u16 sGameFreakLettersMoveSpeed[NUM_GF_LETTERS] =
     256, // G
     192, // A
     128, // M
-     64, // E
-      0, // F
-     64, // R
+    64, // E
+    0, // F
+    64, // R
     128, // E
     192, // A
     256  // K
@@ -953,7 +949,7 @@ static const union AnimCmd sAnim_FlygonSilhouette[] =
     ANIMCMD_FRAME(0, 10),
     ANIMCMD_JUMP(0),
 };
-static const union AnimCmd *const sAnims_FlygonSilhouette[] =
+static const union AnimCmd* const sAnims_FlygonSilhouette[] =
 {
     sAnim_FlygonSilhouette,
 };
@@ -1005,7 +1001,7 @@ static const union AnimCmd sAnim_RayquazaOrb[] =
     ANIMCMD_FRAME(16, 8),
     ANIMCMD_END,
 };
-static const union AnimCmd *const sAnims_RayquazaOrb[] =
+static const union AnimCmd* const sAnims_RayquazaOrb[] =
 {
     sAnim_RayquazaOrb,
 };
@@ -1059,8 +1055,8 @@ static void MainCB2_EndIntro(void)
 
 static void LoadCopyrightGraphics(u16 tilesetAddress, u16 tilemapAddress, u16 paletteOffset)
 {
-    LZ77UnCompVram(gIntroCopyright_Gfx, (void *)(VRAM + tilesetAddress));
-    LZ77UnCompVram(gIntroCopyright_Tilemap, (void *)(VRAM + tilemapAddress));
+    LZ77UnCompVram(gIntroCopyright_Gfx, (void*)(VRAM + tilesetAddress));
+    LZ77UnCompVram(gIntroCopyright_Tilemap, (void*)(VRAM + tilemapAddress));
     LoadPalette(gIntroCopyright_Pal, paletteOffset, PLTT_SIZE_4BPP);
 }
 
@@ -1073,51 +1069,51 @@ static u8 SetUpCopyrightScreen(void)
 {
     switch (gMain.state)
     {
-    case COPYRIGHT_INITIALIZE:
-        SetVBlankCallback(NULL);
-        SetGpuReg(REG_OFFSET_BLDCNT, 0);
-        SetGpuReg(REG_OFFSET_BLDALPHA, 0);
-        SetGpuReg(REG_OFFSET_BLDY, 0);
-        *(u16 *)PLTT = RGB_WHITE;
-        SetGpuReg(REG_OFFSET_DISPCNT, 0);
-        SetGpuReg(REG_OFFSET_BG0HOFS, 0);
-        SetGpuReg(REG_OFFSET_BG0VOFS, 0);
-        CpuFill32(0, (void *)VRAM, VRAM_SIZE);
-        CpuFill32(0, (void *)OAM, OAM_SIZE);
-        CpuFill16(0, (void *)(PLTT + 2), PLTT_SIZE - 2);
-        ResetPaletteFade();
-        LoadCopyrightGraphics(0, 0x3800, BG_PLTT_ID(0));
-        ScanlineEffect_Stop();
-        ResetTasks();
-        ResetSpriteData();
-        FreeAllSpritePalettes();
-        BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
-        SetGpuReg(REG_OFFSET_BG0CNT, BGCNT_PRIORITY(0)
-                                   | BGCNT_CHARBASE(0)
-                                   | BGCNT_SCREENBASE(7)
-                                   | BGCNT_16COLOR
-                                   | BGCNT_TXT256x256);
-        EnableInterrupts(INTR_FLAG_VBLANK);
-        SetVBlankCallback(VBlankCB_Intro);
-        REG_DISPCNT = DISPCNT_MODE_0 | DISPCNT_OBJ_1D_MAP | DISPCNT_BG0_ON;
-        SetSerialCallback(SerialCB_CopyrightScreen);
-        GameCubeMultiBoot_Init(&gMultibootProgramStruct);
-    default:
-        UpdatePaletteFade();
-        gMain.state++;
-        GameCubeMultiBoot_Main(&gMultibootProgramStruct);
-        break;
-    case COPYRIGHT_START_FADE:
-        GameCubeMultiBoot_Main(&gMultibootProgramStruct);
-        if (gMultibootProgramStruct.gcmb_field_2 != 1)
-        {
-            BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+        case 0:
+            SetVBlankCallback(NULL);
+            SetGpuReg(REG_OFFSET_BLDCNT, 0);
+            SetGpuReg(REG_OFFSET_BLDALPHA, 0);
+            SetGpuReg(REG_OFFSET_BLDY, 0);
+            *(u16*)PLTT = RGB_WHITE;
+            SetGpuReg(REG_OFFSET_DISPCNT, 0);
+            SetGpuReg(REG_OFFSET_BG0HOFS, 0);
+            SetGpuReg(REG_OFFSET_BG0VOFS, 0);
+            CpuFill32(0, (void*)VRAM, VRAM_SIZE);
+            CpuFill32(0, (void*)OAM, OAM_SIZE);
+            CpuFill16(0, (void*)(PLTT + 2), PLTT_SIZE - 2);
+            ResetPaletteFade();
+            LoadCopyrightGraphics(0, 0x3800, BG_PLTT_ID(0));
+            ScanlineEffect_Stop();
+            ResetTasks();
+            ResetSpriteData();
+            FreeAllSpritePalettes();
+            BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
+            SetGpuReg(REG_OFFSET_BG0CNT, BGCNT_PRIORITY(0)
+            | BGCNT_CHARBASE(0)
+            | BGCNT_SCREENBASE(7)
+            | BGCNT_16COLOR
+            | BGCNT_TXT256x256);
+            EnableInterrupts(INTR_FLAG_VBLANK);
+            SetVBlankCallback(VBlankCB_Intro);
+            REG_DISPCNT = DISPCNT_MODE_0 | DISPCNT_OBJ_1D_MAP | DISPCNT_BG0_ON;
+            SetSerialCallback(SerialCB_CopyrightScreen);
+            GameCubeMultiBoot_Init(&gMultibootProgramStruct);
+        default:
+            UpdatePaletteFade();
             gMain.state++;
-        }
-        break;
-    case COPYRIGHT_START_INTRO:
-        if (UpdatePaletteFade())
+            GameCubeMultiBoot_Main(&gMultibootProgramStruct);
             break;
+        case 140:
+            GameCubeMultiBoot_Main(&gMultibootProgramStruct);
+            if (gMultibootProgramStruct.gcmb_field_2 != 1)
+            {
+                BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+                gMain.state++;
+            }
+            break;
+        case 141:
+            if (UpdatePaletteFade())
+                break;
         CreateTask(Task_Scene1_Load, 0);
         SetMainCallback2(MainCB2_Intro);
         if (gMultibootProgramStruct.gcmb_field_2 != 0)
@@ -1125,10 +1121,10 @@ static u8 SetUpCopyrightScreen(void)
             if (gMultibootProgramStruct.gcmb_field_2 == 2)
             {
                 // check the multiboot ROM header game code to see if we already did this
-                if (*(u32 *)(EWRAM_START + 0xAC) == COLOSSEUM_GAME_CODE)
+                if (*(u32*)(EWRAM_START + 0xAC) == COLOSSEUM_GAME_CODE)
                 {
-                    CpuCopy16(&gMultiBootProgram_PokemonColosseum_Start, (void *)EWRAM_START, sizeof(gMultiBootProgram_PokemonColosseum_Start));
-                    *(u32 *)(EWRAM_START + 0xAC) = COLOSSEUM_GAME_CODE;
+                    CpuCopy16(&gMultiBootProgram_PokemonColosseum_Start, (void*)EWRAM_START, sizeof(gMultiBootProgram_PokemonColosseum_Start));
+                    *(u32*)(EWRAM_START + 0xAC) = COLOSSEUM_GAME_CODE;
                 }
                 GameCubeMultiBoot_ExecuteProgram(&gMultibootProgramStruct);
             }
@@ -1146,7 +1142,7 @@ static u8 SetUpCopyrightScreen(void)
 
 void CB2_InitCopyrightScreenAfterBootup(void)
 {
-    if (!SetUpCopyrightScreen())
+    if (gMain.state == 0)
     {
         SetSaveBlocksPointers(GetSaveBlocksPointersBaseOffset());
         ResetMenuAndMonGlobals();
@@ -1157,6 +1153,7 @@ void CB2_InitCopyrightScreenAfterBootup(void)
         SetPokemonCryStereo(gSaveBlock2Ptr->optionsSound);
         InitHeap(gHeap, HEAP_SIZE);
     }
+    CB2_InitMainMenu();
 }
 
 void CB2_InitCopyrightScreenAfterTitleScreen(void)
@@ -1175,14 +1172,14 @@ static void Task_Scene1_Load(u8 taskId)
     SetGpuReg(REG_OFFSET_BG2VOFS, 80);
     SetGpuReg(REG_OFFSET_BG1VOFS, 24);
     SetGpuReg(REG_OFFSET_BG0VOFS, 40);
-    LZ77UnCompVram(sIntro1Bg_Gfx, (void *)VRAM);
-    LZ77UnCompVram(sIntro1Bg0_Tilemap, (void *)(BG_CHAR_ADDR(2)));
+    LZ77UnCompVram(sIntro1Bg_Gfx, (void*)VRAM);
+    LZ77UnCompVram(sIntro1Bg0_Tilemap, (void*)(BG_CHAR_ADDR(2)));
     DmaClear16(3, BG_SCREEN_ADDR(17), BG_SCREEN_SIZE);
-    LZ77UnCompVram(sIntro1Bg1_Tilemap, (void *)(BG_SCREEN_ADDR(18)));
+    LZ77UnCompVram(sIntro1Bg1_Tilemap, (void*)(BG_SCREEN_ADDR(18)));
     DmaClear16(3, BG_SCREEN_ADDR(19), BG_SCREEN_SIZE);
-    LZ77UnCompVram(sIntro1Bg2_Tilemap, (void *)(BG_SCREEN_ADDR(20)));
+    LZ77UnCompVram(sIntro1Bg2_Tilemap, (void*)(BG_SCREEN_ADDR(20)));
     DmaClear16(3, BG_SCREEN_ADDR(21), BG_SCREEN_SIZE);
-    LZ77UnCompVram(sIntro1Bg3_Tilemap, (void *)(BG_SCREEN_ADDR(22)));
+    LZ77UnCompVram(sIntro1Bg3_Tilemap, (void*)(BG_SCREEN_ADDR(22)));
     DmaClear16(3, BG_SCREEN_ADDR(23), BG_SCREEN_SIZE);
     LoadPalette(sIntro1Bg_Pal, BG_PLTT_ID(0), sizeof(sIntro1Bg_Pal));
     SetGpuReg(REG_OFFSET_BG3CNT, BGCNT_PRIORITY(3) | BGCNT_CHARBASE(0) | BGCNT_SCREENBASE(22) | BGCNT_16COLOR | BGCNT_TXT256x512);
@@ -1200,7 +1197,7 @@ static void Task_Scene1_Load(u8 taskId)
     CpuCopy16(&gPlttBufferUnfaded[OBJ_PLTT_ID(0)], &gPlttBufferUnfaded[OBJ_PLTT_ID(12) + 3], PLTT_SIZEOF(16 - 3));
     CpuCopy16(&gPlttBufferUnfaded[OBJ_PLTT_ID(0)], &gPlttBufferUnfaded[OBJ_PLTT_ID(11) + 4], PLTT_SIZEOF(16 - 4));
     CpuCopy16(&gPlttBufferUnfaded[OBJ_PLTT_ID(0)], &gPlttBufferUnfaded[OBJ_PLTT_ID(10) + 5], PLTT_SIZEOF(16 - 5));
-    CpuCopy16(&gPlttBufferUnfaded[OBJ_PLTT_ID(0)], &gPlttBufferUnfaded[OBJ_PLTT_ID( 9) + 6], PLTT_SIZEOF(16 - 6));
+    CpuCopy16(&gPlttBufferUnfaded[OBJ_PLTT_ID(0)], &gPlttBufferUnfaded[OBJ_PLTT_ID(9) + 6], PLTT_SIZEOF(16 - 6));
     CreateGameFreakLogoSprites(DISPLAY_WIDTH / 2, DISPLAY_HEIGHT / 2, 0);
     gTasks[taskId].sBigDropSpriteId = CreateWaterDrop(236, -14, 0x200, 1, 0x78, FALSE);
     gTasks[taskId].func = Task_Scene1_FadeIn;
@@ -1267,22 +1264,22 @@ static void Task_Scene1_WaterDrops(u8 taskId)
 
 static void Task_CreateSparkles(u8 taskId)
 {
-    s16 *data = gTasks[taskId].data;
+    s16* data = gTasks[taskId].data;
 
     if (++tTimer & 1)
         tTimerSteps++;
 
     switch (tState)
     {
-    case 0:
-        CreateSprite(&sSpriteTemplate_Sparkle, sSparkleCoords[tNumSparkles][0], sSparkleCoords[tNumSparkles][1] + tTimerSteps, 0);
-        tState++;
-        tDelay = 12;
-        tNumSparkles++;
-        break;
-    case 1:
-        if (--tDelay == 0)
-            tState = 0;
+        case 0:
+            CreateSprite(&sSpriteTemplate_Sparkle, sSparkleCoords[tNumSparkles][0], sSparkleCoords[tNumSparkles][1] + tTimerSteps, 0);
+            tState++;
+            tDelay = 12;
+            tNumSparkles++;
+            break;
+        case 1:
+            if (--tDelay == 0)
+                tState = 0;
         break;
     }
 
@@ -1296,7 +1293,7 @@ static void Task_CreateSparkles(u8 taskId)
 #undef tNumSparkles
 
 #define sTimer data[0]
-static void SpriteCB_Sparkle(struct Sprite *sprite)
+static void SpriteCB_Sparkle(struct Sprite* sprite)
 {
     if (++sprite->sTimer == 12)
         DestroySprite(sprite);
@@ -1485,89 +1482,89 @@ enum {
     VOLBEAT_WAIT_STATE
 };
 
-static void SpriteCB_Volbeat(struct Sprite *sprite)
+static void SpriteCB_Volbeat(struct Sprite* sprite)
 {
     sprite->sCosYIdx += 4;
     switch (sprite->sState)
     {
-    case VOLBEAT_WAIT_ENTER:
-        if (++sprite->sStateDelay < 180)
-            break;
+        case VOLBEAT_WAIT_ENTER:
+            if (++sprite->sStateDelay < 180)
+                break;
         sprite->sState++;
         // fallthrough
-    case VOLBEAT_ENTER:
-        sprite->x -= 4;
-        if (sprite->x == 60)
-        {
-            sprite->sState = VOLBEAT_WAIT_STATE;
-            sprite->sStateDelay = 20;
-            sprite->sNextState = VOLBEAT_ZIP_BACKWARD;
-        }
-        break;
-    case VOLBEAT_ZIP_BACKWARD:
-        sprite->x += 8;
-        sprite->y -= 2;
-        if (sprite->x == 124)
-        {
-            sprite->sState = VOLBEAT_WAIT_STATE;
-            sprite->sStateDelay = 20;
-            sprite->sNextState = VOLBEAT_ZIP_DOWN;
-        }
-        break;
-    case VOLBEAT_ZIP_DOWN:
-        sprite->y += 4;
-        if (sprite->y == 80)
-        {
-            sprite->sState = VOLBEAT_WAIT_STATE;
-            sprite->sStateDelay = 10;
-            sprite->sNextState = VOLBEAT_ZIP_FORWARD;
-        }
-        break;
-    case VOLBEAT_ZIP_FORWARD:
-        sprite->x -= 8;
-        sprite->y -= 2;
-        if (sprite->x == 60)
-        {
-            sprite->sState = VOLBEAT_WAIT_STATE;
-            sprite->sStateDelay = 10;
-            sprite->sNextState = VOLBEAT_INIT_FIGURE_8;
-        }
-        break;
-    case VOLBEAT_INIT_FIGURE_8:
-        sprite->x += 60;
-        sprite->sSinXIdx = 0xC0;
-        sprite->sSinYIdx = 0x80;
-        sprite->sFig8Loops = 3;
-        sprite->sState++;
-        // fallthrough
-    case VOLBEAT_FIGURE_8:
-        sprite->x2 = Sin((u8)sprite->sSinXIdx, 0x3C);
-        sprite->y2 = Sin((u8)sprite->sSinYIdx, 0x14);
-        sprite->sSinXIdx += 2;
-        sprite->sSinYIdx += 4;
-        if ((sprite->sSinXIdx & 0xFF) == 64)
-        {
-            sprite->hFlip = FALSE;
-            if (--sprite->sFig8Loops == 0)
+        case VOLBEAT_ENTER:
+            sprite->x -= 4;
+            if (sprite->x == 60)
             {
-                sprite->x += sprite->x2;
-                sprite->x2 = 0;
-                sprite->sState++;
+                sprite->sState = VOLBEAT_WAIT_STATE;
+                sprite->sStateDelay = 20;
+                sprite->sNextState = VOLBEAT_ZIP_BACKWARD;
             }
-        }
+            break;
+        case VOLBEAT_ZIP_BACKWARD:
+            sprite->x += 8;
+            sprite->y -= 2;
+            if (sprite->x == 124)
+            {
+                sprite->sState = VOLBEAT_WAIT_STATE;
+                sprite->sStateDelay = 20;
+                sprite->sNextState = VOLBEAT_ZIP_DOWN;
+            }
+            break;
+        case VOLBEAT_ZIP_DOWN:
+            sprite->y += 4;
+            if (sprite->y == 80)
+            {
+                sprite->sState = VOLBEAT_WAIT_STATE;
+                sprite->sStateDelay = 10;
+                sprite->sNextState = VOLBEAT_ZIP_FORWARD;
+            }
+            break;
+        case VOLBEAT_ZIP_FORWARD:
+            sprite->x -= 8;
+            sprite->y -= 2;
+            if (sprite->x == 60)
+            {
+                sprite->sState = VOLBEAT_WAIT_STATE;
+                sprite->sStateDelay = 10;
+                sprite->sNextState = VOLBEAT_INIT_FIGURE_8;
+            }
+            break;
+        case VOLBEAT_INIT_FIGURE_8:
+            sprite->x += 60;
+            sprite->sSinXIdx = 0xC0;
+            sprite->sSinYIdx = 0x80;
+            sprite->sFig8Loops = 3;
+            sprite->sState++;
+            // fallthrough
+        case VOLBEAT_FIGURE_8:
+            sprite->x2 = Sin((u8)sprite->sSinXIdx, 0x3C);
+            sprite->y2 = Sin((u8)sprite->sSinYIdx, 0x14);
+            sprite->sSinXIdx += 2;
+            sprite->sSinYIdx += 4;
+            if ((sprite->sSinXIdx & 0xFF) == 64)
+            {
+                sprite->hFlip = FALSE;
+                if (--sprite->sFig8Loops == 0)
+                {
+                    sprite->x += sprite->x2;
+                    sprite->x2 = 0;
+                    sprite->sState++;
+                }
+            }
+            break;
+        case VOLBEAT_EXIT:
+            sprite->x -= 2;
+            sprite->y2 = Sin((u8)sprite->sSinYIdx, 0x14);
+            sprite->sSinYIdx += 4;
+            if (sprite->x < -16)
+                DestroySprite(sprite);
         break;
-    case VOLBEAT_EXIT:
-        sprite->x -= 2;
-        sprite->y2 = Sin((u8)sprite->sSinYIdx, 0x14);
-        sprite->sSinYIdx += 4;
-        if (sprite->x < -16)
-            DestroySprite(sprite);
-        break;
-    case VOLBEAT_WAIT_STATE:
-        // Wait for state progression, fly idly until then
-        sprite->y2 = Cos((u8)sprite->sCosYIdx, 2);
-        if (!--sprite->sStateDelay)
-            sprite->sState = sprite->sNextState;
+        case VOLBEAT_WAIT_STATE:
+            // Wait for state progression, fly idly until then
+            sprite->y2 = Cos((u8)sprite->sCosYIdx, 2);
+            if (!--sprite->sStateDelay)
+                sprite->sState = sprite->sNextState;
         break;
     }
 }
@@ -1582,69 +1579,69 @@ static void SpriteCB_Volbeat(struct Sprite *sprite)
 #define sMoveTimer data[1]
 #define sDelay     data[2]
 
-static void SpriteCB_Torchic(struct Sprite *sprite)
+static void SpriteCB_Torchic(struct Sprite* sprite)
 {
     switch (sprite->sState)
     {
-    case 0:
-        if (gIntroFrameCounter == TIMER_TORCHIC_ENTER)
-        {
-            StartSpriteAnim(sprite, TORCHIC_ANIM_RUN);
-            sprite->sState++;
-        }
-        break;
-    case 1:
-        if (gIntroFrameCounter == TIMER_PLAYER_HOLD_POSITION)
-        {
-            StartSpriteAnim(sprite, TORCHIC_ANIM_WALK);
-            sprite->sState++;
-        }
-        else
-        {
-            sprite->sMoveTimer += 64;
-            if (sprite->sMoveTimer & 0xFF00)
+        case 0:
+            if (gIntroFrameCounter == TIMER_TORCHIC_ENTER)
             {
-                sprite->x--;
-                sprite->sMoveTimer &= 0xFF;
+                StartSpriteAnim(sprite, TORCHIC_ANIM_RUN);
+                sprite->sState++;
             }
-        }
-        break;
-    case 2:
-        if (gIntroFrameCounter != TIMER_TORCHIC_SPEED_UP)
-        {
-            sprite->sMoveTimer += 32;
-            if (sprite->sMoveTimer & 0xFF00)
+            break;
+        case 1:
+            if (gIntroFrameCounter == TIMER_PLAYER_HOLD_POSITION)
             {
-                sprite->x++;
-                sprite->sMoveTimer &= 0xFF;
+                StartSpriteAnim(sprite, TORCHIC_ANIM_WALK);
+                sprite->sState++;
             }
-        }
-        else
-        {
-            StartSpriteAnim(sprite, TORCHIC_ANIM_RUN);
-            sprite->sState++;
-            sprite->sDelay = 80;
-        }
-        break;
-    case 3:
-        if (--sprite->sDelay)
-        {
-            sprite->sMoveTimer += 64;
-            if (sprite->sMoveTimer & 0xFF00)
+            else
             {
-                sprite->x--;
-                sprite->sMoveTimer &= 0xFF;
+                sprite->sMoveTimer += 64;
+                if (sprite->sMoveTimer & 0xFF00)
+                {
+                    sprite->x--;
+                    sprite->sMoveTimer &= 0xFF;
+                }
             }
-        }
-        else
-        {
-            StartSpriteAnim(sprite, TORCHIC_ANIM_TRIP);
-            sprite->sState++;
-        }
-        break;
-    case 4:
-        if (sprite->animEnded)
-            sprite->x += 4;
+            break;
+        case 2:
+            if (gIntroFrameCounter != TIMER_TORCHIC_SPEED_UP)
+            {
+                sprite->sMoveTimer += 32;
+                if (sprite->sMoveTimer & 0xFF00)
+                {
+                    sprite->x++;
+                    sprite->sMoveTimer &= 0xFF;
+                }
+            }
+            else
+            {
+                StartSpriteAnim(sprite, TORCHIC_ANIM_RUN);
+                sprite->sState++;
+                sprite->sDelay = 80;
+            }
+            break;
+        case 3:
+            if (--sprite->sDelay)
+            {
+                sprite->sMoveTimer += 64;
+                if (sprite->sMoveTimer & 0xFF00)
+                {
+                    sprite->x--;
+                    sprite->sMoveTimer &= 0xFF;
+                }
+            }
+            else
+            {
+                StartSpriteAnim(sprite, TORCHIC_ANIM_TRIP);
+                sprite->sState++;
+            }
+            break;
+        case 4:
+            if (sprite->animEnded)
+                sprite->x += 4;
 
         if (sprite->x > 336)
         {
@@ -1652,9 +1649,9 @@ static void SpriteCB_Torchic(struct Sprite *sprite)
             sprite->sState++;
         }
         break;
-    case 5:
-        if (gIntroFrameCounter >= TIMER_TORCHIC_EXIT)
-            sprite->x -= 2;
+        case 5:
+            if (gIntroFrameCounter >= TIMER_TORCHIC_EXIT)
+                sprite->x -= 2;
         break;
     }
 }
@@ -1665,18 +1662,18 @@ static void SpriteCB_Torchic(struct Sprite *sprite)
 #define sSinIdx data[1]
 #define sCosIdx data[2]
 
-static void SpriteCB_Manectric(struct Sprite *sprite)
+static void SpriteCB_Manectric(struct Sprite* sprite)
 {
     switch (sprite->sState)
     {
-    case 0:
-        if (gIntroFrameCounter == TIMER_MANECTRIC_ENTER)
-            sprite->sState++;
+        case 0:
+            if (gIntroFrameCounter == TIMER_MANECTRIC_ENTER)
+                sprite->sState++;
         break;
-    case 1:
-        sprite->x -= 2;
-        if (gIntroFrameCounter != TIMER_MANECTRIC_RUN_CIRCULAR)
-            break;
+        case 1:
+            sprite->x -= 2;
+            if (gIntroFrameCounter != TIMER_MANECTRIC_RUN_CIRCULAR)
+                break;
 
         // Initialize circular pattern running
         sprite->y -= 12;
@@ -1684,30 +1681,30 @@ static void SpriteCB_Manectric(struct Sprite *sprite)
         sprite->sCosIdx = 0;
         sprite->sState++;
         // fallthrough
-    case 2:
-        if (sprite->x + sprite->x2 <= -32)
-        {
-            // Manectric is offscreen now, destroy it
-            DestroySprite(sprite);
-        }
-        else
-        {
-            // Run in circular pattern
-            if ((sprite->sSinIdx & 0xFF) < 64)
+        case 2:
+            if (sprite->x + sprite->x2 <= -32)
             {
-                sprite->x2 = Sin((u8)sprite->sSinIdx, 16);
+                // Manectric is offscreen now, destroy it
+                DestroySprite(sprite);
             }
             else
             {
-                if ((sprite->sSinIdx & 0xFF) == 64)
-                    sprite->x -= 48;
-                sprite->x2 = Sin((u8)sprite->sSinIdx, 64);
+                // Run in circular pattern
+                if ((sprite->sSinIdx & 0xFF) < 64)
+                {
+                    sprite->x2 = Sin((u8)sprite->sSinIdx, 16);
+                }
+                else
+                {
+                    if ((sprite->sSinIdx & 0xFF) == 64)
+                        sprite->x -= 48;
+                    sprite->x2 = Sin((u8)sprite->sSinIdx, 64);
+                }
+                sprite->sSinIdx++;
+                sprite->y2 = Cos((u8)sprite->sCosIdx, 12);
+                sprite->sCosIdx++;
             }
-            sprite->sSinIdx++;
-            sprite->y2 = Cos((u8)sprite->sCosIdx, 12);
-            sprite->sCosIdx++;
-        }
-        break;
+            break;
     }
 }
 
@@ -1721,8 +1718,8 @@ static void SpriteCB_Manectric(struct Sprite *sprite)
 static void Task_Scene3_Load(u8 taskId)
 {
     IntroResetGpuRegs();
-    LZ77UnCompVram(sIntroPokeball_Gfx, (void *)VRAM);
-    LZ77UnCompVram(sIntroPokeball_Tilemap, (void *)(BG_CHAR_ADDR(1)));
+    LZ77UnCompVram(sIntroPokeball_Gfx, (void*)VRAM);
+    LZ77UnCompVram(sIntroPokeball_Tilemap, (void*)(BG_CHAR_ADDR(1)));
     LoadPalette(sIntroPokeball_Pal, BG_PLTT_ID(0), sizeof(sIntroPokeball_Pal));
     gTasks[taskId].tAlpha = 0;
     gTasks[taskId].tZoomDiv = 0;
@@ -1776,10 +1773,10 @@ static void Task_Scene3_LoadGroudon(u8 taskId)
         ResetSpriteData();
         FreeAllSpritePalettes();
         gReservedSpritePaletteCount = 8;
-        LZDecompressVram(gIntroGroudon_Gfx, (void *)VRAM);
-        LZDecompressVram(gIntroGroudon_Tilemap, (void *)(BG_CHAR_ADDR(3)));
-        LZDecompressVram(gIntroLegendBg_Gfx, (void *)(BG_CHAR_ADDR(1)));
-        LZDecompressVram(gIntroGroudonBg_Tilemap, (void *)(BG_SCREEN_ADDR(28)));
+        LZDecompressVram(gIntroGroudon_Gfx, (void*)VRAM);
+        LZDecompressVram(gIntroGroudon_Tilemap, (void*)(BG_CHAR_ADDR(3)));
+        LZDecompressVram(gIntroLegendBg_Gfx, (void*)(BG_CHAR_ADDR(1)));
+        LZDecompressVram(gIntroGroudonBg_Tilemap, (void*)(BG_SCREEN_ADDR(28)));
         LoadCompressedSpriteSheetUsingHeap(&gBattleAnimPicTable[GET_TRUE_SPRITE_INDEX(ANIM_TAG_ROCKS)]);
         LoadCompressedSpritePaletteUsingHeap(&gBattleAnimPaletteTable[GET_TRUE_SPRITE_INDEX(ANIM_TAG_ROCKS)]);
         CpuCopy16(gIntro3Bg_Pal, gPlttBufferUnfaded, sizeof(gIntro3Bg_Pal));
@@ -1799,22 +1796,22 @@ static void Task_Scene3_InitGroudonBg(u8 taskId)
     SetGpuReg(REG_OFFSET_WININ, WININ_WIN0_ALL);
     SetGpuReg(REG_OFFSET_WINOUT, 0);
     SetGpuReg(REG_OFFSET_BG2CNT, BGCNT_PRIORITY(0)
-                               | BGCNT_CHARBASE(0)
-                               | BGCNT_SCREENBASE(24)
-                               | BGCNT_256COLOR
-                               | BGCNT_WRAP
-                               | BGCNT_AFF512x512);
+    | BGCNT_CHARBASE(0)
+    | BGCNT_SCREENBASE(24)
+    | BGCNT_256COLOR
+    | BGCNT_WRAP
+    | BGCNT_AFF512x512);
     SetGpuReg(REG_OFFSET_BG1CNT, BGCNT_PRIORITY(1)
-                               | BGCNT_CHARBASE(1)
-                               | BGCNT_SCREENBASE(28)
-                               | BGCNT_16COLOR
-                               | BGCNT_TXT256x256);
+    | BGCNT_CHARBASE(1)
+    | BGCNT_SCREENBASE(28)
+    | BGCNT_16COLOR
+    | BGCNT_TXT256x256);
     SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_1
-                                | DISPCNT_OBJ_1D_MAP
-                                | DISPCNT_BG1_ON
-                                | DISPCNT_BG2_ON
-                                | DISPCNT_OBJ_ON
-                                | DISPCNT_WIN0_ON);
+    | DISPCNT_OBJ_1D_MAP
+    | DISPCNT_BG1_ON
+    | DISPCNT_BG2_ON
+    | DISPCNT_OBJ_ON
+    | DISPCNT_WIN0_ON);
     BeginNormalPaletteFade(PALETTES_ALL, 0, 16, 0, RGB_WHITEALPHA);
     gTasks[taskId].tWinPos = 0;
     gTasks[taskId].tScreenX = 0xFFA0;
@@ -1866,112 +1863,109 @@ static void Task_Scene3_StartGroudon(u8 taskId)
 #define tTrigIdx data[6] // Re-used
 #define tPalIdx  data[7]
 
-// Treats gIntro3Bg_Pal as u8* and iterates by 1
-#define INTRO3_RAW_PTR(palId)(((void *) &gIntro3Bg_Pal) + palId)
-
 static void Task_Scene3_Groudon(u8 taskId)
 {
-    s16 *data = gTasks[taskId].data;
+    s16* data = gTasks[taskId].data;
 
     tTimer++;
-    if ((tState >= 1 && tState <= 7) && tTimer % 2 == 0)
+    if ((u16)(tState - 1) < 7 && tTimer % 2 == 0)
         tYShake ^= 3;
     PanFadeAndZoomScreen(tScreenX, tScreenY + tYShake, tZoom, 0);
     switch (tState)
     {
-    case 0:
-        tScreenX += 16;
-        if (tScreenX == 160)
-        {
-            tState++;
-            tDelay = 2;
-            tPalIdx = 0x1E2;
-            CreateGroudonRockSprites(taskId);
-        }
-        break;
-    case 1:
-        if (--tDelay == 0)
-        {
-            tDelay = 2;
-            CpuCopy16(INTRO3_RAW_PTR(tPalIdx), &gPlttBufferFaded[BG_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
-            tPalIdx += 2;
-            if (tPalIdx == 0x1EC)
-                tState++;
-        }
-        break;
-    case 2:
-        if (--tDelay == 0)
-        {
-            tDelay = 2;
-            tState++;
-        }
-        break;
-    case 3:
-        if (--tDelay == 0)
-        {
-            tDelay = 2;
-            CpuCopy16(INTRO3_RAW_PTR(tPalIdx), &gPlttBufferFaded[BG_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
-            tPalIdx -= 2;
-            if (tPalIdx == 0x1E0)
+        case 0:
+            tScreenX += 16;
+            if (tScreenX == 160)
             {
-                tDelay = 8;
+                tState++;
+                tDelay = 2;
+                tPalIdx = 0x1E2;
+                CreateGroudonRockSprites(taskId);
+            }
+            break;
+        case 1:
+            if (--tDelay == 0)
+            {
+                tDelay = 2;
+                CpuCopy16(&gIntro3Bg_Pal[tPalIdx], &gPlttBufferFaded[BG_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
+                tPalIdx += 2;
+                if (tPalIdx == 0x1EC)
+                    tState++;
+            }
+            break;
+        case 2:
+            if (--tDelay == 0)
+            {
+                tDelay = 2;
                 tState++;
             }
-        }
-        break;
-    case 4:
-        if (--tDelay == 0)
-        {
-            tScreenX = -96;
-            tScreenY = 169;
-            tDelay = 3;
-            tState++;
-        }
-        break;
-    case 5:
-        if (--tDelay == 0)
-        {
-            tScreenX = 80;
-            tScreenY = 41;
-            tDelay = 16;
-            PlayCryInternal(SPECIES_GROUDON, 0, 100, CRY_PRIORITY_NORMAL, CRY_MODE_NORMAL);
-            tState++;
-        }
-        break;
-    case 6:
-        if (--tDelay == 0)
-        {
-            tScreenX = 80;
-            tScreenY = 40;
-            tState++;
-        }
-        break;
-    case 7:
-        tScreenX += 4;
-        tScreenY += 4;
-        tTrigIdx += 0x666;
-        tZoom = Sin((tTrigIdx & 0xFF00) >> 8, 64) + 256;
-        if (tScreenX == 120)
-        {
-            BeginNormalPaletteFade(PALETTES_ALL & ~1, 3, 0, 16, RGB_WHITE);
-            tZoom = 256;
-            tYShake = 0;
-            tState++;
-        }
-        break;
-    case 8:
-        if (tZoom)
-            tZoom -= 8;
+            break;
+        case 3:
+            if (--tDelay == 0)
+            {
+                tDelay = 2;
+                CpuCopy16(&gIntro3Bg_Pal[tPalIdx], &gPlttBufferFaded[BG_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
+                tPalIdx -= 2;
+                if (tPalIdx == 0x1E0)
+                {
+                    tDelay = 8;
+                    tState++;
+                }
+            }
+            break;
+        case 4:
+            if (--tDelay == 0)
+            {
+                tScreenX = -96;
+                tScreenY = 169;
+                tDelay = 3;
+                tState++;
+            }
+            break;
+        case 5:
+            if (--tDelay == 0)
+            {
+                tScreenX = 80;
+                tScreenY = 41;
+                tDelay = 16;
+                PlayCryInternal(SPECIES_GROUDON, 0, 100, CRY_PRIORITY_NORMAL, CRY_MODE_NORMAL);
+                tState++;
+            }
+            break;
+        case 6:
+            if (--tDelay == 0)
+            {
+                tScreenX = 80;
+                tScreenY = 40;
+                tState++;
+            }
+            break;
+        case 7:
+            tScreenX += 4;
+            tScreenY += 4;
+            tTrigIdx += 0x666;
+            tZoom = Sin((tTrigIdx & 0xFF00) >> 8, 64) + 256;
+            if (tScreenX == 120)
+            {
+                BeginNormalPaletteFade(PALETTES_ALL & ~1, 3, 0, 16, RGB_WHITE);
+                tZoom = 256;
+                tYShake = 0;
+                tState++;
+            }
+            break;
+        case 8:
+            if (tZoom)
+                tZoom -= 8;
         else
             tState++;
         break;
-    case 9:
-        if (!gPaletteFade.active)
-        {
-            gTasks[taskId].func = Task_Scene3_LoadKyogre;
-            gScanlineEffect.state = 3;
-        }
-        break;
+        case 9:
+            if (!gPaletteFade.active)
+            {
+                gTasks[taskId].func = Task_Scene3_LoadKyogre;
+                gScanlineEffect.state = 3;
+            }
+            break;
     }
 }
 
@@ -1996,7 +1990,7 @@ static void CreateGroudonRockSprites(u8 taskId)
 
     for (i = 0; i < (int)ARRAY_COUNT(sGroudonRockData); i++)
     {
-        spriteId = CreateSprite(&gAncientPowerRockSpriteTemplate, sGroudonRockData[i][0], DISPLAY_HEIGHT, i);
+        spriteId = CreateSprite(gAncientPowerRockSpriteTemplate, sGroudonRockData[i][0], DISPLAY_HEIGHT, i);
         gSprites[spriteId].callback = SpriteCB_GroudonRocks;
         gSprites[spriteId].oam.priority = 0;
         gSprites[spriteId].sRockId = i;
@@ -2005,29 +1999,29 @@ static void CreateGroudonRockSprites(u8 taskId)
     }
 }
 
-static void SpriteCB_GroudonRocks(struct Sprite *sprite)
+static void SpriteCB_GroudonRocks(struct Sprite* sprite)
 {
     // Introduce some wobble to the floating
     sprite->sTimer++;
     if (sprite->sTimer % 2 == 0)
         sprite->y2 ^= 3;
 
-    switch(sprite->sState)
+    switch (sprite->sState)
     {
-    case 0:
-        // Rock floats up
-        sprite->sSpeed += sGroudonRockData[sprite->sRockId][2];
-        sprite->y -= (sprite->sSpeed & 0xFF00) >> 8;
-        sprite->sSpeed &= 0xFF;
+        case 0:
+            // Rock floats up
+            sprite->sSpeed += sGroudonRockData[sprite->sRockId][2];
+            sprite->y -= (sprite->sSpeed & 0xFF00) >> 8;
+            sprite->sSpeed &= 0xFF;
 
-        // Check if Groudon scene is ending
-        if (gTasks[sprite->sTaskId].tState > 7)
-            sprite->sState++;
+            // Check if Groudon scene is ending
+            if (gTasks[sprite->sTaskId].tState > 7)
+                sprite->sState++;
         break;
-    case 1:
-        // Scene zooms in, move rock offscreen
-        if (sprite->x < DISPLAY_WIDTH / 2)
-            sprite->x -= 2;
+        case 1:
+            // Scene zooms in, move rock offscreen
+            if (sprite->x < DISPLAY_WIDTH / 2)
+                sprite->x -= 2;
         else
             sprite->x += 2;
 
@@ -2054,9 +2048,9 @@ static void SpriteCB_GroudonRocks(struct Sprite *sprite)
 static void Task_Scene3_LoadKyogre(u8 taskId)
 {
     ResetSpriteData();
-    LZDecompressVram(gIntroKyogre_Gfx, (void *)VRAM);
-    LZDecompressVram(gIntroKyogre_Tilemap, (void *)(BG_CHAR_ADDR(3)));
-    LZDecompressVram(gIntroKyogreBg_Tilemap, (void *)(BG_SCREEN_ADDR(28)));
+    LZDecompressVram(gIntroKyogre_Gfx, (void*)VRAM);
+    LZDecompressVram(gIntroKyogre_Tilemap, (void*)(BG_CHAR_ADDR(3)));
+    LZDecompressVram(gIntroKyogreBg_Tilemap, (void*)(BG_SCREEN_ADDR(28)));
     LoadCompressedSpriteSheet(sSpriteSheet_Bubbles);
     LoadSpritePalette(sSpritePalette_Bubbles);
     BeginNormalPaletteFade(PALETTES_ALL & ~1, 0, 16, 0, RGB_WHITEALPHA);
@@ -2072,145 +2066,145 @@ static void Task_Scene3_LoadKyogre(u8 taskId)
 
 static void Task_Scene3_Kyogre(u8 taskId)
 {
-    s16 *data = gTasks[taskId].data;
+    s16* data = gTasks[taskId].data;
 
     PanFadeAndZoomScreen(tScreenX, tScreenY, tZoom, 0);
 
     switch (tState)
     {
-    case 0:
-        if (--tDelay != 0)
-            break;
+        case 0:
+            if (--tDelay != 0)
+                break;
         tState++;
-    case 1:
-        tTrigIdx += 4;
-        gTasks[taskId].tScreenX = 344 - Sin(tTrigIdx, 0x100);
-        gTasks[taskId].tScreenY = 84 - Cos(tTrigIdx, 0x40);
-        if (tTrigIdx == 64)
-        {
-            tDelay = 0x19;
-            tPalIdx = 1;
-            tState++;
-            CreateKyogreBubbleSprites_Body(0);
-        }
-        break;
-    case 2:
-        if (--tDelay == 0)
-        {
-            gTasks[taskId].tScreenX += 256;
-            gTasks[taskId].tScreenY -= 258;
-            tDelay = 8;
-            tState++;
-            CreateKyogreBubbleSprites_Body(0);
-            CreateKyogreBubbleSprites_Fins();
-        }
-        break;
-    case 3:
-        if (--tDelay == 0)
-        {
-            gTasks[taskId].tScreenX -= 256;
-            gTasks[taskId].tScreenY += 258;
-            tDelay = 8;
-            tState++;
-        }
-        break;
-    case 4:
-        if (--tDelay == 0)
-        {
-            gTasks[taskId].tScreenY -= 252;
-            tDelay = 8;
-            tState++;
-        }
-        break;
-    case 5:
-        if (--tDelay == 0)
-        {
-            gTasks[taskId].tScreenY += 252;
-            if (tPalIdx != 0)
+        case 1:
+            tTrigIdx += 4;
+            gTasks[taskId].tScreenX = 344 - Sin(tTrigIdx, 0x100);
+            gTasks[taskId].tScreenY = 84 - Cos(tTrigIdx, 0x40);
+            if (tTrigIdx == 64)
             {
-                tDelay = 12;
-                tPalIdx--;
-                tState = 2;
-            }
-            else
-            {
-                tDelay = 1;
+                tDelay = 0x19;
+                tPalIdx = 1;
                 tState++;
-                PlayCryInternal(SPECIES_KYOGRE, 0, 120, CRY_PRIORITY_NORMAL, CRY_MODE_NORMAL);
+                CreateKyogreBubbleSprites_Body(0);
             }
-        }
-        break;
-    case 6:
-        if (--tDelay == 0)
-        {
-            tDelay = 4;
-            tPalIdx = 0x1EA;
-            tState++;
-        }
-        break;
-    case 7:
-        if (--tDelay == 0)
-        {
-            tDelay = 4;
-            CpuCopy16(INTRO3_RAW_PTR(tPalIdx), &gPlttBufferFaded[BG_PLTT_ID(2) + 15], PLTT_SIZEOF(1));
-            tPalIdx -= 2;
-            if (tPalIdx == 0x1E0)
-                tState++;
-        }
-        break;
-    case 8:
-        if (--tDelay == 0)
-        {
-            tDelay = 4;
-            tPalIdx = 0x1E2;
-            tState++;
-        }
-        break;
-    case 9:
-        if (--tDelay == 0)
-        {
-            tDelay = 4;
-            CpuCopy16(INTRO3_RAW_PTR(tPalIdx), &gPlttBufferFaded[BG_PLTT_ID(2) + 15], PLTT_SIZEOF(1));
-            tPalIdx += 2;
-            if (tPalIdx == 0x1EE)
+            break;
+        case 2:
+            if (--tDelay == 0)
             {
-                tDelay = 16;
+                gTasks[taskId].tScreenX += 256;
+                gTasks[taskId].tScreenY -= 258;
+                tDelay = 8;
+                tState++;
+                CreateKyogreBubbleSprites_Body(0);
+                CreateKyogreBubbleSprites_Fins();
+            }
+            break;
+        case 3:
+            if (--tDelay == 0)
+            {
+                gTasks[taskId].tScreenX -= 256;
+                gTasks[taskId].tScreenY += 258;
+                tDelay = 8;
                 tState++;
             }
-        }
+            break;
+        case 4:
+            if (--tDelay == 0)
+            {
+                gTasks[taskId].tScreenY -= 252;
+                tDelay = 8;
+                tState++;
+            }
+            break;
+        case 5:
+            if (--tDelay == 0)
+            {
+                gTasks[taskId].tScreenY += 252;
+                if (tPalIdx != 0)
+                {
+                    tDelay = 12;
+                    tPalIdx--;
+                    tState = 2;
+                }
+                else
+                {
+                    tDelay = 1;
+                    tState++;
+                    PlayCryInternal(SPECIES_KYOGRE, 0, 120, CRY_PRIORITY_NORMAL, CRY_MODE_NORMAL);
+                }
+            }
+            break;
+        case 6:
+            if (--tDelay == 0)
+            {
+                tDelay = 4;
+                tPalIdx = 0x1EA;
+                tState++;
+            }
+            break;
+        case 7:
+            if (--tDelay == 0)
+            {
+                tDelay = 4;
+                CpuCopy16(&gIntro3Bg_Pal[tPalIdx], &gPlttBufferFaded[BG_PLTT_ID(2) + 15], PLTT_SIZEOF(1));
+                tPalIdx -= 2;
+                if (tPalIdx == 0x1E0)
+                    tState++;
+            }
+            break;
+        case 8:
+            if (--tDelay == 0)
+            {
+                tDelay = 4;
+                tPalIdx = 0x1E2;
+                tState++;
+            }
+            break;
+        case 9:
+            if (--tDelay == 0)
+            {
+                tDelay = 4;
+                CpuCopy16(&gIntro3Bg_Pal[tPalIdx], &gPlttBufferFaded[BG_PLTT_ID(2) + 15], PLTT_SIZEOF(1));
+                tPalIdx += 2;
+                if (tPalIdx == 0x1EE)
+                {
+                    tDelay = 16;
+                    tState++;
+                }
+            }
+            break;
+        case 10:
+            if (--tDelay == 0)
+            {
+                tTrigIdx = 0;
+                tState++;
+                CreateKyogreBubbleSprites_Body(taskId);
+            }
+            break;
+        case 11:
+            tTrigIdx += 4;
+            tZoom -= 8;
+            gTasks[taskId].tScreenX = Sin(tTrigIdx, 0x3C) + 88;
+            if (tTrigIdx == 64)
+            {
+                BeginNormalPaletteFade(PALETTES_ALL & ~1, 3, 0, 16, RGB_WHITE);
+                tState++;
+            }
+            break;
+        case 12:
+            tTrigIdx += 4;
+            tZoom -= 8;
+            gTasks[taskId].tScreenX = Sin(tTrigIdx, 0x14) + 128;
+            if (tTrigIdx == 128)
+                tState++;
         break;
-    case 10:
-        if (--tDelay == 0)
-        {
-            tTrigIdx = 0;
-            tState++;
-            CreateKyogreBubbleSprites_Body(taskId);
-        }
-        break;
-    case 11:
-        tTrigIdx += 4;
-        tZoom -= 8;
-        gTasks[taskId].tScreenX = Sin(tTrigIdx, 0x3C) + 88;
-        if (tTrigIdx == 64)
-        {
-            BeginNormalPaletteFade(PALETTES_ALL & ~1, 3, 0, 16, RGB_WHITE);
-            tState++;
-        }
-        break;
-    case 12:
-        tTrigIdx += 4;
-        tZoom -= 8;
-        gTasks[taskId].tScreenX = Sin(tTrigIdx, 0x14) + 128;
-        if (tTrigIdx == 128)
-            tState++;
-        break;
-    case 13:
-        if (!gPaletteFade.active)
-        {
-            gTasks[taskId].func = Task_Scene3_LoadClouds1;
-            gScanlineEffect.state = 3;
-        }
-        break;
+        case 13:
+            if (!gPaletteFade.active)
+            {
+                gTasks[taskId].func = Task_Scene3_LoadClouds1;
+                gScanlineEffect.state = 3;
+            }
+            break;
     }
 }
 
@@ -2266,46 +2260,46 @@ static void CreateKyogreBubbleSprites_Fins(void)
                                 sKyogreBubbleData[i + NUM_BUBBLES_IN_SET][1],
                                 i);
         gSprites[spriteId].invisible = TRUE;
-#ifdef BUGFIX
+        #ifdef BUGFIX
         gSprites[spriteId].sDelay = sKyogreBubbleData[i + NUM_BUBBLES_IN_SET][2];
-#else
+        #else
         gSprites[spriteId].sDelay = sKyogreBubbleData[i][2]; // Using the wrong set of delays here
-#endif
+        #endif
         gSprites[spriteId].sUnk = 64;
     }
 }
 
-static void SpriteCB_KyogreBubbles(struct Sprite *sprite)
+static void SpriteCB_KyogreBubbles(struct Sprite* sprite)
 {
-    switch(sprite->sState)
+    switch (sprite->sState)
     {
-    case 0:
-        if (sprite->sDelay == 0)
-        {
-            // Animation has started, float bubbles up
-            sprite->sSinIdx = (sprite->sSinIdx + 11) & 0xFF;
-            sprite->x2 = Sin(sprite->sSinIdx, 4);
-            sprite->sBaseY += 48;
-            sprite->y2 = -(sprite->sBaseY >> 8);
-            if (sprite->animEnded)
-                DestroySprite(sprite);
-        }
-        else if (--sprite->sDelay == 0)
-        {
-            // Start bubble animation after delay has finished
-            StartSpriteAnim(sprite, 0);
-            sprite->invisible = FALSE;
-        }
+        case 0:
+            if (sprite->sDelay == 0)
+            {
+                // Animation has started, float bubbles up
+                sprite->sSinIdx = (sprite->sSinIdx + 11) & 0xFF;
+                sprite->x2 = Sin(sprite->sSinIdx, 4);
+                sprite->sBaseY += 48;
+                sprite->y2 = -(sprite->sBaseY >> 8);
+                if (sprite->animEnded)
+                    DestroySprite(sprite);
+            }
+            else if (--sprite->sDelay == 0)
+            {
+                // Start bubble animation after delay has finished
+                StartSpriteAnim(sprite, 0);
+                sprite->invisible = FALSE;
+            }
 
-        // Check if Kyogre scene is ending
-        // For all but the last bubbles, sTaskId isn't actually set
-        if (gTasks[sprite->sTaskId].tState > 11)
-            sprite->sState++;
+            // Check if Kyogre scene is ending
+            // For all but the last bubbles, sTaskId isn't actually set
+            if (gTasks[sprite->sTaskId].tState > 11)
+                sprite->sState++;
         break;
-    case 1:
-        // Scene zooms in, move bubbles offscreen
-        if (sprite->x < DISPLAY_WIDTH / 2)
-            sprite->x -= 3;
+        case 1:
+            // Scene zooms in, move bubbles offscreen
+            if (sprite->x < DISPLAY_WIDTH / 2)
+                sprite->x -= 3;
         else
             sprite->x += 3;
 
@@ -2329,49 +2323,49 @@ static void SpriteCB_KyogreBubbles(struct Sprite *sprite)
 static void Task_Scene3_LoadClouds1(u8 taskId)
 {
     SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_TGT1_BG0
-                               | BLDCNT_TGT1_BG1
-                               | BLDCNT_TGT1_BG2
-                               | BLDCNT_EFFECT_LIGHTEN);
+    | BLDCNT_TGT1_BG1
+    | BLDCNT_TGT1_BG2
+    | BLDCNT_EFFECT_LIGHTEN);
     SetGpuReg(REG_OFFSET_BLDALPHA, BLDALPHA_BLEND(31, 31));
     SetGpuReg(REG_OFFSET_BLDY, 31);
     SetGpuReg(REG_OFFSET_BG0CNT, BGCNT_PRIORITY(0)
-                               | BGCNT_CHARBASE(0)
-                               | BGCNT_SCREENBASE(24)
-                               | BGCNT_16COLOR
-                               | BGCNT_TXT512x256);
+    | BGCNT_CHARBASE(0)
+    | BGCNT_SCREENBASE(24)
+    | BGCNT_16COLOR
+    | BGCNT_TXT512x256);
     SetGpuReg(REG_OFFSET_BG1CNT, BGCNT_PRIORITY(0)
-                               | BGCNT_CHARBASE(1)
-                               | BGCNT_SCREENBASE(26)
-                               | BGCNT_16COLOR
-                               | BGCNT_TXT512x256);
+    | BGCNT_CHARBASE(1)
+    | BGCNT_SCREENBASE(26)
+    | BGCNT_16COLOR
+    | BGCNT_TXT512x256);
     SetGpuReg(REG_OFFSET_BG2CNT, BGCNT_PRIORITY(2)
-                               | BGCNT_CHARBASE(1)
-                               | BGCNT_SCREENBASE(28)
-                               | BGCNT_16COLOR
-                               | BGCNT_TXT256x256);
+    | BGCNT_CHARBASE(1)
+    | BGCNT_SCREENBASE(28)
+    | BGCNT_16COLOR
+    | BGCNT_TXT256x256);
     SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_0
-                                | DISPCNT_OBJ_1D_MAP
-                                | DISPCNT_BG0_ON
-                                | DISPCNT_BG1_ON
-                                | DISPCNT_BG2_ON
-                                | DISPCNT_OBJ_ON
-                                | DISPCNT_WIN0_ON);
+    | DISPCNT_OBJ_1D_MAP
+    | DISPCNT_BG0_ON
+    | DISPCNT_BG1_ON
+    | DISPCNT_BG2_ON
+    | DISPCNT_OBJ_ON
+    | DISPCNT_WIN0_ON);
     SetGpuReg(REG_OFFSET_BG0HOFS, 80);
     SetGpuReg(REG_OFFSET_BG0VOFS, 0);
     SetGpuReg(REG_OFFSET_BG1HOFS, -80);
     SetGpuReg(REG_OFFSET_BG1VOFS, 0);
     SetGpuReg(REG_OFFSET_BG2HOFS, 0);
     SetGpuReg(REG_OFFSET_BG2VOFS, 0);
-    LZDecompressVram(gIntroClouds_Gfx, (void *)VRAM);
-    LZDecompressVram(gIntroClouds_Gfx, (void *)(BG_CHAR_ADDR(1)));
-    LZDecompressVram(gIntroCloudsSun_Tilemap, (void *)(BG_SCREEN_ADDR(28)));
+    LZDecompressVram(gIntroClouds_Gfx, (void*)VRAM);
+    LZDecompressVram(gIntroClouds_Gfx, (void*)(BG_CHAR_ADDR(1)));
+    LZDecompressVram(gIntroCloudsSun_Tilemap, (void*)(BG_SCREEN_ADDR(28)));
     gTasks[taskId].func = Task_Scene3_LoadClouds2;
 }
 
 static void Task_Scene3_LoadClouds2(u8 taskId)
 {
-    LZDecompressVram(gIntroCloudsLeft_Tilemap, (void *)(BG_CHAR_ADDR(3)));
-    LZDecompressVram(gIntroCloudsRight_Tilemap, (void *)(BG_SCREEN_ADDR(26)));
+    LZDecompressVram(gIntroCloudsLeft_Tilemap, (void*)(BG_CHAR_ADDR(3)));
+    LZDecompressVram(gIntroCloudsRight_Tilemap, (void*)(BG_SCREEN_ADDR(26)));
     gTasks[taskId].func = Task_Scene3_InitClouds;
 }
 
@@ -2390,7 +2384,7 @@ static void Task_Scene3_InitClouds(u8 taskId)
 // Clouds coming in from the sides before Rayquaza appears
 static void Task_Scene3_Clouds(u8 taskId)
 {
-    s16 *data = gTasks[taskId].data;
+    s16* data = gTasks[taskId].data;
 
     // Left clouds are on BG0, right clouds are on BG1
     SetGpuReg(REG_OFFSET_BG0HOFS, (tCloudPos >> 8));
@@ -2398,21 +2392,21 @@ static void Task_Scene3_Clouds(u8 taskId)
 
     switch (tState)
     {
-    case 0:
-        // Cloud position is used briefly as a delay, before
-        // the scene has faded in from white
-        if (--tCloudPos == 0)
-        {
-            // Start fade in from white, set cloud starting positions
-            BeginNormalPaletteFade(PALETTES_ALL & ~1, 0, 16, 0, RGB_WHITEALPHA);
-            tCloudPos = 80 << 8;
-            tState++;
-        }
-        break;
-    case 1:
-        // Start fading out
-        if (tCloudPos == 40 << 8)
-            BeginNormalPaletteFade(PALETTES_BG & ~1, 3, 0, 16, RGB(9, 10, 10));
+        case 0:
+            // Cloud position is used briefly as a delay, before
+            // the scene has faded in from white
+            if (--tCloudPos == 0)
+            {
+                // Start fade in from white, set cloud starting positions
+                BeginNormalPaletteFade(PALETTES_ALL & ~1, 0, 16, 0, RGB_WHITEALPHA);
+                tCloudPos = 80 << 8;
+                tState++;
+            }
+            break;
+        case 1:
+            // Start fading out
+            if (tCloudPos == 40 << 8)
+                BeginNormalPaletteFade(PALETTES_BG & ~1, 3, 0, 16, RGB(9, 10, 10));
 
         // Move clouds inward toward each other
         if (tCloudPos != 0)
@@ -2429,16 +2423,16 @@ static void Task_Scene3_Clouds(u8 taskId)
 
 static void Task_Scene3_LoadLightning(u8 taskId)
 {
-    LZDecompressVram(gIntroRayquaza_Tilemap, (void *)(BG_SCREEN_ADDR(28)));
-    LZDecompressVram(gIntroRayquazaClouds_Tilemap, (void *)(BG_CHAR_ADDR(3)));
-    LZDecompressVram(gIntroRayquaza_Gfx, (void *)(BG_CHAR_ADDR(1)));
-    LZDecompressVram(gIntroRayquazaClouds_Gfx, (void *)VRAM);
+    LZDecompressVram(gIntroRayquaza_Tilemap, (void*)(BG_SCREEN_ADDR(28)));
+    LZDecompressVram(gIntroRayquazaClouds_Tilemap, (void*)(BG_CHAR_ADDR(3)));
+    LZDecompressVram(gIntroRayquaza_Gfx, (void*)(BG_CHAR_ADDR(1)));
+    LZDecompressVram(gIntroRayquazaClouds_Gfx, (void*)VRAM);
     SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_0
-                                | DISPCNT_OBJ_1D_MAP
-                                | DISPCNT_BG0_ON
-                                | DISPCNT_BG2_ON
-                                | DISPCNT_OBJ_ON
-                                | DISPCNT_WIN0_ON);
+    | DISPCNT_OBJ_1D_MAP
+    | DISPCNT_BG0_ON
+    | DISPCNT_BG2_ON
+    | DISPCNT_OBJ_ON
+    | DISPCNT_WIN0_ON);
     gTasks[taskId].func = Task_Scene3_Lightning;
     gTasks[taskId].tState = 0;
     gTasks[taskId].tDelay = 1;
@@ -2449,40 +2443,40 @@ static void Task_Scene3_LoadLightning(u8 taskId)
 
 static void Task_Scene3_Lightning(u8 taskId)
 {
-    s16 *data = gTasks[taskId].data;
+    s16* data = gTasks[taskId].data;
     u8 spriteId;
 
     switch (tState)
     {
-    case 0:
-        if (--tDelay == 0)
-        {
-            // Do first lightning bolt
-            CreateSprite(&sSpriteTemplate_Lightning, 200, 48, 0);
-            spriteId = CreateSprite(&sSpriteTemplate_Lightning, 200, 80, 1);
-            StartSpriteAnim(&gSprites[spriteId], 1);
-            spriteId = CreateSprite(&sSpriteTemplate_Lightning, 200, 112, 2);
-            StartSpriteAnim(&gSprites[spriteId], 2);
-            tState++;
-            tDelay = 72;
-        }
-        break;
-    case 1:
-        if (--tDelay == 0)
-        {
-            // Do second lightning bolt
-            CreateSprite(&sSpriteTemplate_Lightning, 40, 48, 0);
-            spriteId = CreateSprite(&sSpriteTemplate_Lightning, 40, 80, 1);
-            StartSpriteAnim(&gSprites[spriteId], 1);
-            spriteId = CreateSprite(&sSpriteTemplate_Lightning, 40, 112, 2);
-            StartSpriteAnim(&gSprites[spriteId], 2);
-            tState++;
-            tDelay = 48;
-        }
-        break;
-    case 2:
-        if (--tDelay == 0)
-            gTasks[taskId].func = Task_Scene3_LoadRayquazaAttack;
+        case 0:
+            if (--tDelay == 0)
+            {
+                // Do first lightning bolt
+                CreateSprite(&sSpriteTemplate_Lightning, 200, 48, 0);
+                spriteId = CreateSprite(&sSpriteTemplate_Lightning, 200, 80, 1);
+                StartSpriteAnim(&gSprites[spriteId], 1);
+                spriteId = CreateSprite(&sSpriteTemplate_Lightning, 200, 112, 2);
+                StartSpriteAnim(&gSprites[spriteId], 2);
+                tState++;
+                tDelay = 72;
+            }
+            break;
+        case 1:
+            if (--tDelay == 0)
+            {
+                // Do second lightning bolt
+                CreateSprite(&sSpriteTemplate_Lightning, 40, 48, 0);
+                spriteId = CreateSprite(&sSpriteTemplate_Lightning, 40, 80, 1);
+                StartSpriteAnim(&gSprites[spriteId], 1);
+                spriteId = CreateSprite(&sSpriteTemplate_Lightning, 40, 112, 2);
+                StartSpriteAnim(&gSprites[spriteId], 2);
+                tState++;
+                tDelay = 48;
+            }
+            break;
+        case 2:
+            if (--tDelay == 0)
+                gTasks[taskId].func = Task_Scene3_LoadRayquazaAttack;
         break;
     }
 }
@@ -2490,34 +2484,34 @@ static void Task_Scene3_Lightning(u8 taskId)
 #define sPalIdx data[1]
 #define sDelay data[2]
 
-static void SpriteCB_Lightning(struct Sprite *sprite)
+static void SpriteCB_Lightning(struct Sprite* sprite)
 {
     if (sprite->animEnded)
         sprite->invisible = TRUE;
 
-    switch(sprite->sState)
+    switch (sprite->sState)
     {
-    case 0:
-        sprite->sPalIdx = 0x1C2;
-        sprite->sState++;
-    case 1:
-        CpuCopy16(INTRO3_RAW_PTR(sprite->sPalIdx), &gPlttBufferFaded[BG_PLTT_ID(5) + 13], PLTT_SIZEOF(1));
-        sprite->sPalIdx += 2;
-        if (sprite->sPalIdx != 0x1CE)
-            break;
+        case 0:
+            sprite->sPalIdx = 0x1C2;
+            sprite->sState++;
+        case 1:
+            CpuCopy16(&gIntro3Bg_Pal[sprite->sPalIdx], &gPlttBufferFaded[BG_PLTT_ID(5) + 13], PLTT_SIZEOF(1));
+            sprite->sPalIdx += 2;
+            if (sprite->sPalIdx != 0x1CE)
+                break;
         sprite->sPalIdx = 0x1CC;
         sprite->sDelay = 4;
         sprite->sState++;
-    case 2:
-        if (--sprite->sDelay == 0)
-        {
-            sprite->sDelay = 4;
-            CpuCopy16(INTRO3_RAW_PTR(sprite->sPalIdx), &gPlttBufferFaded[BG_PLTT_ID(5) + 13], PLTT_SIZEOF(1));
-            sprite->sPalIdx -= 2;
-            if (sprite->sPalIdx == 0x1C0)
-                DestroySprite(sprite);
-        }
-        break;
+        case 2:
+            if (--sprite->sDelay == 0)
+            {
+                sprite->sDelay = 4;
+                CpuCopy16(&gIntro3Bg_Pal[sprite->sPalIdx], &gPlttBufferFaded[BG_PLTT_ID(5) + 13], PLTT_SIZEOF(1));
+                sprite->sPalIdx -= 2;
+                if (sprite->sPalIdx == 0x1C0)
+                    DestroySprite(sprite);
+            }
+            break;
     }
 }
 
@@ -2533,11 +2527,11 @@ static void Task_Scene3_LoadRayquazaAttack(u8 taskId)
     LoadCompressedSpriteSheet(sSpriteSheet_RayquazaOrb);
     LoadSpritePalettes(sSpritePalette_RayquazaOrb);
     SetGpuReg(REG_OFFSET_DISPCNT, DISPCNT_MODE_0
-                                | DISPCNT_OBJ_1D_MAP
-                                | DISPCNT_BG0_ON
-                                | DISPCNT_BG2_ON
-                                | DISPCNT_OBJ_ON
-                                | DISPCNT_WIN0_ON);
+    | DISPCNT_OBJ_1D_MAP
+    | DISPCNT_BG0_ON
+    | DISPCNT_BG2_ON
+    | DISPCNT_OBJ_ON
+    | DISPCNT_WIN0_ON);
     gTasks[taskId].func = Task_Scene3_Rayquaza;
     BeginNormalPaletteFade(PALETTES_BG & ~(0x21), 0, 16, 0, RGB(9, 10, 10));
     gTasks[taskId].tState = 0;
@@ -2551,47 +2545,47 @@ static void Task_Scene3_LoadRayquazaAttack(u8 taskId)
 
 static void Task_Scene3_Rayquaza(u8 taskId)
 {
-    s16 *data = gTasks[taskId].data;
+    s16* data = gTasks[taskId].data;
 
     if (tTimer % 2 == 0)
         data[6] ^= 2;
 
     tTimer++;
 
-    switch(tState)
+    switch (tState)
     {
-    case 0:
-        if ((tTimer & 1) != 0)
-        {
-            data[1] -= 2;
-            data[2]++;
-            data[3] += 2;
-            data[4]++;
-        }
-        if (data[1] == 0x68)
-        {
+        case 0:
+            if ((tTimer & 1) != 0)
+            {
+                data[1] -= 2;
+                data[2]++;
+                data[3] += 2;
+                data[4]++;
+            }
+            if (data[1] == 0x68)
+            {
+                tState++;
+                data[5] = 1;
+            }
+            break;
+        case 1:
             tState++;
-            data[5] = 1;
-        }
-        break;
-    case 1:
-        tState++;
-        data[5] = 4;
-        break;
-    case 2:
-        data[1] += 4;
-        data[2] -= 2;
-        data[3] -= 4;
-        data[4] -= 2;
-        if (!gPaletteFade.active)
-        {
-            data[5] = 0x8C;
-            tState++;
-        }
-        break;
-    case 3:
-        if (--data[5] == 0)
-            gTasks[taskId].func = Task_EndIntroMovie;
+            data[5] = 4;
+            break;
+        case 2:
+            data[1] += 4;
+            data[2] -= 2;
+            data[3] -= 4;
+            data[4] -= 2;
+            if (!gPaletteFade.active)
+            {
+                data[5] = 0x8C;
+                tState++;
+            }
+            break;
+        case 3:
+            if (--data[5] == 0)
+                gTasks[taskId].func = Task_EndIntroMovie;
         break;
     }
 }
@@ -2607,93 +2601,93 @@ static void Task_EndIntroMovie(u8 taskId)
 static void Task_RayquazaAttack(u8 taskId)
 {
     u8 spriteId;
-    s16 *data = gTasks[taskId].data;
+    s16* data = gTasks[taskId].data;
     data[2]++;
 
-    switch(tState)
+    switch (tState)
     {
-    case 0:
-        if ((data[2] & 1) != 0)
-        {
-            CpuCopy16(INTRO3_RAW_PTR(0x1A2 + data[1] * 2), &gPlttBufferFaded[BG_PLTT_ID(5) + 14], PLTT_SIZEOF(1));
-            data[1]++;
-        }
-        if (data[1] == 6)
-        {
-            tState++;
-            data[1] = 0;
-            data[3] = 10;
-        }
-        break;
-    case 1:
-        if (data[3] == 0)
-        {
+        case 0:
             if ((data[2] & 1) != 0)
             {
-                CpuCopy16(INTRO3_RAW_PTR(0x1A2 + data[1] * 2), &gPlttBufferFaded[BG_PLTT_ID(5) + 8], PLTT_SIZEOF(1));
+                CpuCopy16(&gIntro3Bg_Pal[0x1A2 + data[1] * 2], &gPlttBufferFaded[BG_PLTT_ID(5) + 14], PLTT_SIZEOF(1));
                 data[1]++;
             }
             if (data[1] == 6)
             {
                 tState++;
+                data[1] = 0;
                 data[3] = 10;
             }
-        }
-        else
-        {
-            data[3]--;
-        }
-        break;
-    case 2:
-        if (data[3] == 0)
-        {
-            if ((data[2] & 1) != 0)
+            break;
+        case 1:
+            if (data[3] == 0)
             {
-                CpuCopy16(INTRO3_RAW_PTR(0x182 + data[1] * 2), &gPlttBufferFaded[BG_PLTT_ID(5) + 12], PLTT_SIZEOF(1));
-                data[1]++;
-            }
-            if (data[1] == 6)
-            {
-                spriteId = CreateSprite(&sSpriteTemplate_RayquazaOrb, 120, 88, 15);
-                PlaySE(SE_INTRO_BLAST);
-                gSprites[spriteId].invisible = TRUE;
-                gSprites[spriteId].data[3] = tRayquazaTaskId;
-                tState++;
-                data[3] = 16;
-            }
-        }
-        else
-        {
-            data[3]--;
-        }
-        break;
-    case 3:
-        if ((data[2] & 1) != 0)
-        {
-            if (--data[3] != 0)
-            {
-                BlendPalette(BG_PLTT_ID(5), 16, data[3], RGB(9, 10, 10));
-                CpuCopy16(INTRO3_RAW_PTR(428), &gPlttBufferFaded[BG_PLTT_ID(5) + 14], PLTT_SIZEOF(1));
-                CpuCopy16(INTRO3_RAW_PTR(428), &gPlttBufferFaded[BG_PLTT_ID(5) + 8], PLTT_SIZEOF(1));
-                CpuCopy16(INTRO3_RAW_PTR(396), &gPlttBufferFaded[BG_PLTT_ID(5) + 12], PLTT_SIZEOF(1));
+                if ((data[2] & 1) != 0)
+                {
+                    CpuCopy16(&gIntro3Bg_Pal[0x1A2 + data[1] * 2], &gPlttBufferFaded[BG_PLTT_ID(5) + 8], PLTT_SIZEOF(1));
+                    data[1]++;
+                }
+                if (data[1] == 6)
+                {
+                    tState++;
+                    data[3] = 10;
+                }
             }
             else
             {
-                tState++;
-                data[3] = 53;
+                data[3]--;
             }
-        }
-        break;
-    case 4:
-        if (--data[3] == 0)
-        {
-            BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_WHITE);
-            tState++;
-        }
-        break;
-    case 5:
-        if (!gPaletteFade.active)
-            DestroyTask(taskId);
+            break;
+        case 2:
+            if (data[3] == 0)
+            {
+                if ((data[2] & 1) != 0)
+                {
+                    CpuCopy16(&gIntro3Bg_Pal[0x182 + data[1] * 2], &gPlttBufferFaded[BG_PLTT_ID(5) + 12], PLTT_SIZEOF(1));
+                    data[1]++;
+                }
+                if (data[1] == 6)
+                {
+                    spriteId = CreateSprite(&sSpriteTemplate_RayquazaOrb, 120, 88, 15);
+                    PlaySE(SE_INTRO_BLAST);
+                    gSprites[spriteId].invisible = TRUE;
+                    gSprites[spriteId].data[3] = tRayquazaTaskId;
+                    tState++;
+                    data[3] = 16;
+                }
+            }
+            else
+            {
+                data[3]--;
+            }
+            break;
+        case 3:
+            if ((data[2] & 1) != 0)
+            {
+                if (--data[3] != 0)
+                {
+                    BlendPalette(BG_PLTT_ID(5), 16, data[3], RGB(9, 10, 10));
+                    CpuCopy16(&gIntro3Bg_Pal[428], &gPlttBufferFaded[BG_PLTT_ID(5) + 14], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntro3Bg_Pal[428], &gPlttBufferFaded[BG_PLTT_ID(5) + 8], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntro3Bg_Pal[396], &gPlttBufferFaded[BG_PLTT_ID(5) + 12], PLTT_SIZEOF(1));
+                }
+                else
+                {
+                    tState++;
+                    data[3] = 53;
+                }
+            }
+            break;
+        case 4:
+            if (--data[3] == 0)
+            {
+                BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_WHITE);
+                tState++;
+            }
+            break;
+        case 5:
+            if (!gPaletteFade.active)
+                DestroyTask(taskId);
         break;
     }
 }
@@ -2718,42 +2712,42 @@ static void Task_BlendLogoIn(u8 taskId)
 {
     switch (gTasks[taskId].tState)
     {
-    case 0:
-    default:
-        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_EFFECT_BLEND
-                                   | BLDCNT_TGT2_BG0
-                                   | BLDCNT_TGT2_BG1
-                                   | BLDCNT_TGT2_BG2
-                                   | BLDCNT_TGT2_BG3
-                                   | BLDCNT_TGT2_OBJ
-                                   | BLDCNT_TGT2_BD);
-        SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[31]);
-        SetGpuReg(REG_OFFSET_BLDY, 0);
-        gTasks[taskId].data[1] = ARRAY_COUNT(gTitleScreenAlphaBlend);
-        gTasks[taskId].tState++;
-        break;
-    case 1:
-        if (gTasks[taskId].data[1] != 0)
-        {
-            u8 tmp;
-
-            gTasks[taskId].data[1]--;
-            tmp = gTasks[taskId].data[1] / 2;
-            SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[tmp]);
-        }
-        else
-        {
-            SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[0]);
-            gTasks[taskId].data[1] = ARRAY_COUNT(gTitleScreenAlphaBlend) / 4;
+        case 0:
+        default:
+            SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_EFFECT_BLEND
+            | BLDCNT_TGT2_BG0
+            | BLDCNT_TGT2_BG1
+            | BLDCNT_TGT2_BG2
+            | BLDCNT_TGT2_BG3
+            | BLDCNT_TGT2_OBJ
+            | BLDCNT_TGT2_BD);
+            SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[31]);
+            SetGpuReg(REG_OFFSET_BLDY, 0);
+            gTasks[taskId].data[1] = ARRAY_COUNT(gTitleScreenAlphaBlend);
             gTasks[taskId].tState++;
-        }
-        break;
-    case 2:
-        SetGpuReg(REG_OFFSET_BLDCNT, 0);
-        SetGpuReg(REG_OFFSET_BLDALPHA, 0);
-        SetGpuReg(REG_OFFSET_BLDY, 0);
-        DestroyTask(taskId);
-        break;
+            break;
+        case 1:
+            if (gTasks[taskId].data[1] != 0)
+            {
+                u8 tmp;
+
+                gTasks[taskId].data[1]--;
+                tmp = gTasks[taskId].data[1] / 2;
+                SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[tmp]);
+            }
+            else
+            {
+                SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[0]);
+                gTasks[taskId].data[1] = ARRAY_COUNT(gTitleScreenAlphaBlend) / 4;
+                gTasks[taskId].tState++;
+            }
+            break;
+        case 2:
+            SetGpuReg(REG_OFFSET_BLDCNT, 0);
+            SetGpuReg(REG_OFFSET_BLDALPHA, 0);
+            SetGpuReg(REG_OFFSET_BLDY, 0);
+            DestroyTask(taskId);
+            break;
     }
 }
 
@@ -2761,49 +2755,49 @@ static void Task_BlendLogoOut(u8 taskId)
 {
     switch (gTasks[taskId].tState)
     {
-    case 0:
-    default:
-        SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_EFFECT_BLEND
-                                   | BLDCNT_TGT2_BG0
-                                   | BLDCNT_TGT2_BG1
-                                   | BLDCNT_TGT2_BG2
-                                   | BLDCNT_TGT2_BG3
-                                   | BLDCNT_TGT2_OBJ
-                                   | BLDCNT_TGT2_BD);
-        SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[0]);
-        SetGpuReg(REG_OFFSET_BLDY, 0);
-        gTasks[taskId].data[1] = 0;
-        gTasks[taskId].tState++;
-        break;
-    case 1:
-        if (gTasks[taskId].data[1] < (int)ARRAY_COUNT(gTitleScreenAlphaBlend) - 2)
-        {
-            u8 tmp;
-
-            gTasks[taskId].data[1]++;
-            tmp = gTasks[taskId].data[1] / 2;
-            SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[tmp]);
-        }
-        else
-        {
-            SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[31]);
-            gTasks[taskId].data[1] = ARRAY_COUNT(gTitleScreenAlphaBlend) / 4;
-            gTasks[taskId].tState++;
-        }
-        break;
-    case 2:
-        if (gTasks[taskId].data[1] != 0)
-        {
-            gTasks[taskId].data[1]--;
-        }
-        else
-        {
-            SetGpuReg(REG_OFFSET_BLDCNT, 0);
-            SetGpuReg(REG_OFFSET_BLDALPHA, 0);
+        case 0:
+        default:
+            SetGpuReg(REG_OFFSET_BLDCNT, BLDCNT_EFFECT_BLEND
+            | BLDCNT_TGT2_BG0
+            | BLDCNT_TGT2_BG1
+            | BLDCNT_TGT2_BG2
+            | BLDCNT_TGT2_BG3
+            | BLDCNT_TGT2_OBJ
+            | BLDCNT_TGT2_BD);
+            SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[0]);
             SetGpuReg(REG_OFFSET_BLDY, 0);
-            DestroyTask(taskId);
-        }
-        break;
+            gTasks[taskId].data[1] = 0;
+            gTasks[taskId].tState++;
+            break;
+        case 1:
+            if (gTasks[taskId].data[1] < (int)ARRAY_COUNT(gTitleScreenAlphaBlend) - 2)
+            {
+                u8 tmp;
+
+                gTasks[taskId].data[1]++;
+                tmp = gTasks[taskId].data[1] / 2;
+                SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[tmp]);
+            }
+            else
+            {
+                SetGpuReg(REG_OFFSET_BLDALPHA, gTitleScreenAlphaBlend[31]);
+                gTasks[taskId].data[1] = ARRAY_COUNT(gTitleScreenAlphaBlend) / 4;
+                gTasks[taskId].tState++;
+            }
+            break;
+        case 2:
+            if (gTasks[taskId].data[1] != 0)
+            {
+                gTasks[taskId].data[1]--;
+            }
+            else
+            {
+                SetGpuReg(REG_OFFSET_BLDCNT, 0);
+                SetGpuReg(REG_OFFSET_BLDALPHA, 0);
+                SetGpuReg(REG_OFFSET_BLDY, 0);
+                DestroyTask(taskId);
+            }
+            break;
     }
 }
 
@@ -2830,7 +2824,7 @@ void PanFadeAndZoomScreen(u16 screenX, u16 screenY, u16 zoom, u16 alpha)
     SetGpuReg(REG_OFFSET_BG2Y_H, dest.dy >> 16);
 }
 
-static void SpriteCB_WaterDrop_Ripple(struct Sprite *sprite)
+static void SpriteCB_WaterDrop_Ripple(struct Sprite* sprite)
 {
     u8 palNum;
 
@@ -2857,7 +2851,7 @@ static void SpriteCB_WaterDrop_Ripple(struct Sprite *sprite)
     }
 }
 
-static void SpriteCB_WaterDropHalf(struct Sprite *sprite)
+static void SpriteCB_WaterDropHalf(struct Sprite* sprite)
 {
     if (gSprites[sprite->data[7]].data[7] != 0)
     {
@@ -2881,14 +2875,14 @@ static void SpriteCB_WaterDropHalf(struct Sprite *sprite)
     }
 }
 
-static void SpriteCB_WaterDrop(struct Sprite *sprite)
+static void SpriteCB_WaterDrop(struct Sprite* sprite)
 {
     // Wait for sState to be modified by Task_Scene1_WaterDrops
     if (sprite->sState != 0)
         sprite->callback = SpriteCB_WaterDrop_Slide;
 }
 
-static void SpriteCB_WaterDrop_Slide(struct Sprite *sprite)
+static void SpriteCB_WaterDrop_Slide(struct Sprite* sprite)
 {
     if (sprite->x <= 116)
     {
@@ -2937,7 +2931,7 @@ static void SpriteCB_WaterDrop_Slide(struct Sprite *sprite)
     }
 }
 
-static void SpriteCB_WaterDrop_ReachLeafEnd(struct Sprite *sprite)
+static void SpriteCB_WaterDrop_ReachLeafEnd(struct Sprite* sprite)
 {
     SetOamMatrix(sprite->data[1], sprite->data[6] + 64, 0, 0, sprite->data[6] + 64);
     SetOamMatrix(sprite->data[1] + 1, sprite->data[6] + 64, 0, 0, sprite->data[6] + 64);
@@ -2957,7 +2951,7 @@ static void SpriteCB_WaterDrop_ReachLeafEnd(struct Sprite *sprite)
     }
 }
 
-static void SpriteCB_WaterDrop_DangleFromLeaf(struct Sprite *sprite)
+static void SpriteCB_WaterDrop_DangleFromLeaf(struct Sprite* sprite)
 {
     if (sprite->data[0] != 2)
     {
@@ -2974,7 +2968,7 @@ static void SpriteCB_WaterDrop_DangleFromLeaf(struct Sprite *sprite)
     }
 }
 
-static void SpriteCB_WaterDrop_Fall(struct Sprite *sprite)
+static void SpriteCB_WaterDrop_Fall(struct Sprite* sprite)
 {
     if (sprite->y < sprite->data[5])
     {
@@ -2998,7 +2992,7 @@ static void SpriteCB_WaterDrop_Fall(struct Sprite *sprite)
 
 // Identical to SpriteCB_WaterDrop_Fall
 // Used by the 2nd and 3rd water drops to skip the leaf slide
-static void SpriteCB_WaterDropShort(struct Sprite *sprite)
+static void SpriteCB_WaterDropShort(struct Sprite* sprite)
 {
     if (sprite->y < sprite->data[5])
     {
@@ -3040,13 +3034,13 @@ static u8 CreateWaterDrop(s16 x, s16 y, u16 c, u16 d, u16 e, u8 fallImmediately)
     StartSpriteAnim(&gSprites[spriteId], DROP_ANIM_REFLECTION);
     if (!fallImmediately)
         gSprites[spriteId].callback = SpriteCB_WaterDrop; // Do full anim, for 1st drop that slides along the leaf
-    else
-        gSprites[spriteId].callback = SpriteCB_WaterDropShort; // Skip to drop falling into the water, for 2nd and 3rd drops
-    oldSpriteId = spriteId;
+        else
+            gSprites[spriteId].callback = SpriteCB_WaterDropShort; // Skip to drop falling into the water, for 2nd and 3rd drops
+            oldSpriteId = spriteId;
 
-    // Create water drop upper half
-    // Implicitly anim number 0, DROP_ANIM_UPPER_HALF
-    spriteId = CreateSprite(&sSpriteTemplate_WaterDrop, x, y, 1);
+        // Create water drop upper half
+        // Implicitly anim number 0, DROP_ANIM_UPPER_HALF
+        spriteId = CreateSprite(&sSpriteTemplate_WaterDrop, x, y, 1);
     gSprites[spriteId].data[7] = oldSpriteId;
     gSprites[spriteId].data[1] = d + 1;
     gSprites[spriteId].oam.affineMode = ST_OAM_AFFINE_DOUBLE;
@@ -3072,35 +3066,35 @@ static u8 CreateWaterDrop(s16 x, s16 y, u16 c, u16 d, u16 e, u8 fallImmediately)
 }
 
 // State is handled by Task_Scene2_BikeRide
-static void SpriteCB_PlayerOnBicycle(struct Sprite *sprite)
+static void SpriteCB_PlayerOnBicycle(struct Sprite* sprite)
 {
     // Adjust x position
     switch (sprite->sState)
     {
-    case 0:
-        // Move forwards
-        StartSpriteAnimIfDifferent(sprite, 0);
-        sprite->x--;
-        break;
-    case 1:
-        // Drift backwards slowly
-        StartSpriteAnimIfDifferent(sprite, 0);
-        if (gIntroFrameCounter & 7)
-            return;
+        case 0:
+            // Move forwards
+            StartSpriteAnimIfDifferent(sprite, 0);
+            sprite->x--;
+            break;
+        case 1:
+            // Drift backwards slowly
+            StartSpriteAnimIfDifferent(sprite, 0);
+            if (gIntroFrameCounter & 7)
+                return;
         sprite->x++;
         break;
-    case 2:
-        // Move backwards
-        if (sprite->x <= 120 || gIntroFrameCounter & 7)
-            sprite->x++;
+        case 2:
+            // Move backwards
+            if (sprite->x <= 120 || gIntroFrameCounter & 7)
+                sprite->x++;
         break;
-    case 3:
-        // Bike in place
-        break;
-    case 4:
-        // Exit to the left
-        if (sprite->x > -32)
-            sprite->x -= 2;
+        case 3:
+            // Bike in place
+            break;
+        case 4:
+            // Exit to the left
+            if (sprite->x > -32)
+                sprite->x -= 2;
         break;
     }
 
@@ -3118,16 +3112,16 @@ static void SpriteCB_PlayerOnBicycle(struct Sprite *sprite)
         // Random wobble on y axis
         switch (Random() & 3)
         {
-        case 0:
-            sprite->y2 = -1;
-            break;
-        case 1:
-            sprite->y2 = 1;
-            break;
-        case 2:
-        case 3:
-            sprite->y2 = 0;
-            break;
+            case 0:
+                sprite->y2 = -1;
+                break;
+            case 1:
+                sprite->y2 = 1;
+                break;
+            case 2:
+            case 3:
+                sprite->y2 = 0;
+                break;
         }
     }
 }
@@ -3135,27 +3129,27 @@ static void SpriteCB_PlayerOnBicycle(struct Sprite *sprite)
 #define sSinIdx data[1]
 
 // Movement is started by setting state to 1 in Task_Scene2_BikeRide
-static void SpriteCB_Flygon(struct Sprite *sprite)
+static void SpriteCB_Flygon(struct Sprite* sprite)
 {
     switch (sprite->sState)
     {
-    case 0:
-        break;
-    case 1:
-        if (sprite->x2 + sprite->x < DISPLAY_WIDTH + 64)
-            sprite->x2 += 8;
+        case 0:
+            break;
+        case 1:
+            if (sprite->x2 + sprite->x < DISPLAY_WIDTH + 64)
+                sprite->x2 += 8;
         else
             sprite->sState = 2;
         break;
-    case 2:
-        if (sprite->x2 + sprite->x > 120)
-            sprite->x2 -= 1;
+        case 2:
+            if (sprite->x2 + sprite->x > 120)
+                sprite->x2 -= 1;
         else
             sprite->sState = 3;
         break;
-    case 3:
-        if (sprite->x2 > 0)
-            sprite->x2 -= 2;
+        case 3:
+            if (sprite->x2 > 0)
+                sprite->x2 -= 2;
         break;
     }
     sprite->y2 = Sin((u8)sprite->sSinIdx, 8) - sFlygonYOffset;
@@ -3173,126 +3167,126 @@ static void SpriteCB_Flygon(struct Sprite *sprite)
 
 // For the letters in "Game Freak"
 // Also intended for the letters in "Presents", which is never shown
-static void SpriteCB_LogoLetter(struct Sprite *sprite)
+static void SpriteCB_LogoLetter(struct Sprite* sprite)
 {
     switch (sprite->sState)
     {
-    case 0:
-        if (sprite->sTimer != 0)
-        {
-            sprite->sTimer--;
-        }
-        else
-        {
-            // Start the grow and shrink appearance animation
-            sprite->invisible = FALSE;
-            StartSpriteAffineAnim(sprite, 1);
-            sprite->sState++;
-        }
-        break;
-    case 1:
-        if (gIntroFrameCounter == TIMER_LOGO_LETTERS_COLOR)
-        {
-            // Initialize color fade
-            sprite->sState++;
-            sprite->sTimer = COLOR_CHANGES;
-            sprite->sColorDelay = 2;
-        }
-        break;
-    case 2:
-        // Fade letters to blue
-        if (sprite->sColorDelay == 0)
-        {
-            sprite->sColorDelay = 2;
+        case 0:
             if (sprite->sTimer != 0)
             {
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer],      &gPlttBufferFaded[OBJ_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 16], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 4], PLTT_SIZEOF(1));
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 32], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 10], PLTT_SIZEOF(1));
                 sprite->sTimer--;
             }
             else
             {
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer],      &gPlttBufferFaded[OBJ_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 16], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 4], PLTT_SIZEOF(1));
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 32], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 10], PLTT_SIZEOF(1));
+                // Start the grow and shrink appearance animation
+                sprite->invisible = FALSE;
+                StartSpriteAffineAnim(sprite, 1);
                 sprite->sState++;
             }
-        }
-        else
-        {
-            sprite->sColorDelay--;
-        }
-        break;
-    case 3:
-        // Fade letters back to white
-        if (sprite->sColorDelay != 0)
-        {
-            sprite->sColorDelay--;
-        }
-        else
-        {
-            sprite->sColorDelay = 2;
-            if (sprite->sTimer <= COLOR_CHANGES)
+            break;
+        case 1:
+            if (gIntroFrameCounter == TIMER_LOGO_LETTERS_COLOR)
             {
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer],      &gPlttBufferFaded[OBJ_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 16], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 4], PLTT_SIZEOF(1));
-                CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 32], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 10], PLTT_SIZEOF(1));
-                sprite->sTimer++;
+                // Initialize color fade
+                sprite->sState++;
+                sprite->sTimer = COLOR_CHANGES;
+                sprite->sColorDelay = 2;
+            }
+            break;
+        case 2:
+            // Fade letters to blue
+            if (sprite->sColorDelay == 0)
+            {
+                sprite->sColorDelay = 2;
+                if (sprite->sTimer != 0)
+                {
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 16], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 4], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 32], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 10], PLTT_SIZEOF(1));
+                    sprite->sTimer--;
+                }
+                else
+                {
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 16], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 4], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 32], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 10], PLTT_SIZEOF(1));
+                    sprite->sState++;
+                }
             }
             else
             {
+                sprite->sColorDelay--;
+            }
+            break;
+        case 3:
+            // Fade letters back to white
+            if (sprite->sColorDelay != 0)
+            {
+                sprite->sColorDelay--;
+            }
+            else
+            {
+                sprite->sColorDelay = 2;
+                if (sprite->sTimer <= COLOR_CHANGES)
+                {
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 15], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 16], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 4], PLTT_SIZEOF(1));
+                    CpuCopy16(&gIntroGameFreakTextFade_Pal[sprite->sTimer + 32], &gPlttBufferFaded[OBJ_PLTT_ID(1) + 10], PLTT_SIZEOF(1));
+                    sprite->sTimer++;
+                }
+                else
+                {
+                    sprite->sState++;
+                }
+            }
+            break;
+        case 4:
+            if (gIntroFrameCounter == TIMER_LOGO_DISAPPEAR)
+            {
+                // Start the grow disappearance animation
+                StartSpriteAffineAnim(sprite, 2);
+                sprite->oam.objMode = ST_OAM_OBJ_BLEND;
                 sprite->sState++;
             }
-        }
-        break;
-    case 4:
-        if (gIntroFrameCounter == TIMER_LOGO_DISAPPEAR)
-        {
-            // Start the grow disappearance animation
-            StartSpriteAffineAnim(sprite, 2);
-            sprite->oam.objMode = ST_OAM_OBJ_BLEND;
-            sprite->sState++;
-        }
-        break;
-    case 5:
-        // Spread the letters out as they grow
-        sprite->sLetterX += sGameFreakLettersMoveSpeed[sprite->sLetterId];
-        sprite->x2 = (sprite->sLetterX & 0xFF00) >> 8;
-        if (sprite->sLetterId < 4)
-        {
-            // Is in first 4 letters, i.e. "Game"
-            s16 temp = sprite->x2;
-            sprite->x2 = -temp;
-        }
-        if (sprite->affineAnimEnded)
-            DestroySprite(sprite);
+            break;
+        case 5:
+            // Spread the letters out as they grow
+            sprite->sLetterX += sGameFreakLettersMoveSpeed[sprite->sLetterId];
+            sprite->x2 = (sprite->sLetterX & 0xFF00) >> 8;
+            if (sprite->sLetterId < 4)
+            {
+                // Is in first 4 letters, i.e. "Game"
+                s16 temp = sprite->x2;
+                sprite->x2 = -temp;
+            }
+            if (sprite->affineAnimEnded)
+                DestroySprite(sprite);
         break;
     }
 }
 
-static void SpriteCB_GameFreakLogo(struct Sprite *sprite)
+static void SpriteCB_GameFreakLogo(struct Sprite* sprite)
 {
-    switch(sprite->sState)
+    switch (sprite->sState)
     {
-    case 0:
-        if (gIntroFrameCounter == TIMER_LOGO_APPEAR)
-        {
-            sprite->invisible = FALSE;
-            sprite->sState++;
-        }
-        break;
-    case 1:
-        if (gIntroFrameCounter == TIMER_LOGO_DISAPPEAR)
-        {
-            // Start the grow disappearance animation
-            StartSpriteAffineAnim(sprite, 3);
-            sprite->sState++;
-        }
-        break;
-    case 2:
-        if (sprite->affineAnimEnded)
-            DestroySprite(sprite);
+        case 0:
+            if (gIntroFrameCounter == TIMER_LOGO_APPEAR)
+            {
+                sprite->invisible = FALSE;
+                sprite->sState++;
+            }
+            break;
+        case 1:
+            if (gIntroFrameCounter == TIMER_LOGO_DISAPPEAR)
+            {
+                // Start the grow disappearance animation
+                StartSpriteAffineAnim(sprite, 3);
+                sprite->sState++;
+            }
+            break;
+        case 2:
+            if (sprite->affineAnimEnded)
+                DestroySprite(sprite);
         break;
     }
 }
@@ -3336,7 +3330,7 @@ static u8 CreateGameFreakLogoSprites(s16 x, s16 y, s16 unused)
 #define sPos     data[3]
 #define sTimer   data[7]
 
-static void SpriteCB_FlygonSilhouette(struct Sprite *sprite)
+static void SpriteCB_FlygonSilhouette(struct Sprite* sprite)
 {
     sprite->sTimer++;
 
@@ -3350,49 +3344,49 @@ static void SpriteCB_FlygonSilhouette(struct Sprite *sprite)
         sin = gSineTable[(u8)sprite->sRot];
         cos = gSineTable[(u8)(sprite->sRot + 64)];
         // Converts rotation and scale into the OAM matrix
-        d = Q_8_8_TO_INT( cos * sprite->sScale);
+        d = Q_8_8_TO_INT(cos * sprite->sScale);
         c = Q_8_8_TO_INT(-sin * sprite->sScale);
-        b = Q_8_8_TO_INT( sin * sprite->sScale);
-        a = Q_8_8_TO_INT( cos * sprite->sScale);
+        b = Q_8_8_TO_INT(sin * sprite->sScale);
+        a = Q_8_8_TO_INT(cos * sprite->sScale);
 
         SetOamMatrix(1, a, b, c, d);
     }
 
     switch (sprite->sState)
     {
-    case 0:
-    default:
-        sprite->oam.affineMode = ST_OAM_AFFINE_DOUBLE;
-        sprite->oam.matrixNum = 1;
-        CalcCenterToCornerVec(sprite, SPRITE_SHAPE(64x32), SPRITE_SIZE(64x32), ST_OAM_AFFINE_DOUBLE);
-        sprite->invisible = FALSE;
-        sprite->sState = 1;
-        sprite->sScale = 128;
-        sprite->sRot = 0;
-        sprite->sPos = 0;
-        break;
-    case 1:
-        sprite->x2 = -Sin((u8)sprite->sPos, 140);
-        sprite->y2 = -Sin((u8)sprite->sPos, 120);
-        sprite->sScale += 7;
-        sprite->sPos += 3;
-        if (sprite->x + sprite->x2 <= -16)
-        {
-            sprite->oam.priority = 3;
-            sprite->sState++;
-            sprite->x = 20;
-            sprite->y = 40;
-            sprite->sScale = 512;
+        case 0:
+        default:
+            sprite->oam.affineMode = ST_OAM_AFFINE_DOUBLE;
+            sprite->oam.matrixNum = 1;
+            CalcCenterToCornerVec(sprite, SPRITE_SHAPE(64x32), SPRITE_SIZE(64x32), ST_OAM_AFFINE_DOUBLE);
+            sprite->invisible = FALSE;
+            sprite->sState = 1;
+            sprite->sScale = 128;
             sprite->sRot = 0;
-            sprite->sPos = 16;
-        }
-        break;
-    case 2:
-        sprite->x2 = Sin((u8)sprite->sPos, 34);
-        sprite->y2 = -Cos((u8)sprite->sPos, 60);
-        sprite->sScale += 2;
-        if (sprite->sTimer % 5 == 0)
-            sprite->sPos++;
+            sprite->sPos = 0;
+            break;
+        case 1:
+            sprite->x2 = -Sin((u8)sprite->sPos, 140);
+            sprite->y2 = -Sin((u8)sprite->sPos, 120);
+            sprite->sScale += 7;
+            sprite->sPos += 3;
+            if (sprite->x + sprite->x2 <= -16)
+            {
+                sprite->oam.priority = 3;
+                sprite->sState++;
+                sprite->x = 20;
+                sprite->y = 40;
+                sprite->sScale = 512;
+                sprite->sRot = 0;
+                sprite->sPos = 16;
+            }
+            break;
+        case 2:
+            sprite->x2 = Sin((u8)sprite->sPos, 34);
+            sprite->y2 = -Cos((u8)sprite->sPos, 60);
+            sprite->sScale += 2;
+            if (sprite->sTimer % 5 == 0)
+                sprite->sPos++;
         break;
     }
 }
@@ -3402,34 +3396,34 @@ static void SpriteCB_FlygonSilhouette(struct Sprite *sprite)
 #undef sPos
 #undef sTimer
 
-static void SpriteCB_RayquazaOrb(struct Sprite *sprite)
+static void SpriteCB_RayquazaOrb(struct Sprite* sprite)
 {
     u16 foo;
     switch (sprite->sState)
     {
-    case 0:
-    default:
-        sprite->invisible = FALSE;
-        sprite->oam.affineMode = ST_OAM_AFFINE_DOUBLE;
-        sprite->oam.matrixNum = 18;
-        CalcCenterToCornerVec(sprite, SPRITE_SHAPE(64x64), SPRITE_SIZE(64x64), ST_OAM_AFFINE_DOUBLE);
-        sprite->data[1] = 0;
-        sprite->sState = 1;
-        //fall through
-    case 1:
-        sprite->data[7]++;
-        if (sprite->data[7] & 1)
-        {
-            sprite->invisible = TRUE;
-        }
-        else
-        {
+        case 0:
+        default:
             sprite->invisible = FALSE;
-            if (sprite->data[1] < 64)
-                sprite->data[1]++;
-        }
-        foo = 256 - gSineTable[(u8)sprite->data[1]] / 2;
-        SetOamMatrix(18, foo, 0, 0, foo);
-        break;
+            sprite->oam.affineMode = ST_OAM_AFFINE_DOUBLE;
+            sprite->oam.matrixNum = 18;
+            CalcCenterToCornerVec(sprite, SPRITE_SHAPE(64x64), SPRITE_SIZE(64x64), ST_OAM_AFFINE_DOUBLE);
+            sprite->data[1] = 0;
+            sprite->sState = 1;
+            //fall through
+        case 1:
+            sprite->data[7]++;
+            if (sprite->data[7] & 1)
+            {
+                sprite->invisible = TRUE;
+            }
+            else
+            {
+                sprite->invisible = FALSE;
+                if (sprite->data[1] < 64)
+                    sprite->data[1]++;
+            }
+            foo = 256 - gSineTable[(u8)sprite->data[1]] / 2;
+            SetOamMatrix(18, foo, 0, 0, foo);
+            break;
     }
 }
