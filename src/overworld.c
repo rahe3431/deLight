@@ -68,6 +68,9 @@
 #include "constants/weather.h"
 #include "constants/event_object_movement.h"
 
+
+#define UNDEFINED 0xFF
+
 struct CableClubPlayer
 {
     u8 playerId;

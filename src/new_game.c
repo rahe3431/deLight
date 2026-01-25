@@ -1,4 +1,5 @@
 #include "global.h"
+#include "main.h"
 #include "new_game.h"
 #include "random.h"
 #include "pokemon.h"
@@ -16,9 +17,8 @@
 #include "berry.h"
 #include "rtc.h"
 #include "easy_chat.h"
-#include "event_data.h"
 #include "money.h"
-#include "trainer_hill.h"
+#include "trainer_hill.h"            // For ClearRankingHallRecords
 #include "tv.h"
 #include "coins.h"
 #include "text.h"
@@ -28,11 +28,8 @@
 #include "item.h"
 #include "pokedex.h"
 #include "apprentice.h"
-#include "frontier_util.h"
-#include "pokedex.h"
 #include "save.h"
 #include "link_rfu.h"
-#include "main.h"
 #include "contest.h"
 #include "item_menu.h"
 #include "pokemon_storage_system.h"
@@ -42,9 +39,20 @@
 #include "player_pc.h"
 #include "field_specials.h"
 #include "berry_powder.h"
-#include "mystery_gift.h"
-#include "union_room_chat.h"
+#include "mystery_gift.h"            // For ClearMysteryGift
+#include "event_data.h"              // For InitEventData
+#include "union_room_chat.h"         // For InitUnionRoomChatRegisteredTexts
+
+// Constants
 #include "constants/items.h"
+#include "constants/maps.h"
+#include "constants/map_types.h"
+#include "constants/map_groups.h"
+#include "constants/layouts.h"
+#include "constants/field_effects.h"
+#include "main_menu.h"
+#include "libgcnmultiboot.h"
+#include "frontier_util.h"
 
 extern const u8 EventScript_ResetAllMapFlags[];
 
@@ -126,7 +134,7 @@ static void ClearFrontierRecord(void)
 
 static void WarpToTruck(void)
 {
-    SetWarpDestination(MAP_GROUP(INSIDE_OF_TRUCK), MAP_NUM(INSIDE_OF_TRUCK), WARP_ID_NONE, -1, -1);
+    SetWarpDestination(MAP_GROUP(MAP_LITTLEROOT_TOWN_BRENDANS_HOUSE_2F), MAP_NUM(MAP_LITTLEROOT_TOWN_BRENDANS_HOUSE_2F), WARP_ID_NONE, -1, -1);
     WarpIntoMap();
 }
 

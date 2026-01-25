@@ -4,29 +4,31 @@
 #include "scanline_effect.h"
 #include "task.h"
 #include "title_screen.h"
-#include "libgcnmultiboot.h"
 #include "malloc.h"
 #include "gpu_regs.h"
 #include "link.h"
-#include "multiboot_pokemon_colosseum.h"
+#include "stub_libgcnmultiboot.h" //we dont need te pokemon colusseum multiboot
 #include "load_save.h"
 #include "save.h"
 #include "new_game.h"
 #include "m4a.h"
 #include "random.h"
 #include "decompress.h"
-#include "constants/songs.h"
-#include "intro_credits_graphics.h"
+#include "sound.h"
+#include "graphics.h"
+#include "util.h"
 #include "trig.h"
 #include "intro.h"
-#include "graphics.h"
-#include "sound.h"
-#include "util.h"
-#include "title_screen.h"
+#include "intro_credits_graphics.h"
+#include "main_menu.h"
+
+#include "constants/songs.h"
 #include "constants/rgb.h"
 #include "constants/battle_anim.h"
-#include "main_menu.h"
-#include "event_data.h"
+#include "constants/maps.h"
+#include "constants/map_types.h"
+#include "constants/map_groups.h"
+#include "constants/layouts.h"
 
 /*
  *   The intro is grouped into the following scenes
@@ -1097,43 +1099,43 @@ static u8 SetUpCopyrightScreen(void)
             SetVBlankCallback(VBlankCB_Intro);
             REG_DISPCNT = DISPCNT_MODE_0 | DISPCNT_OBJ_1D_MAP | DISPCNT_BG0_ON;
             SetSerialCallback(SerialCB_CopyrightScreen);
-            GameCubeMultiBoot_Init(&gMultibootProgramStruct);
+            // GameCubeMultiBoot_Init(&gMultibootProgramStruct);
         default:
             UpdatePaletteFade();
             gMain.state++;
-            GameCubeMultiBoot_Main(&gMultibootProgramStruct);
+            // GameCubeMultiBoot_Main(&gMultibootProgramStruct);
             break;
         case 140:
-            GameCubeMultiBoot_Main(&gMultibootProgramStruct);
-            if (gMultibootProgramStruct.gcmb_field_2 != 1)
-            {
-                BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
-                gMain.state++;
-            }
+            // GameCubeMultiBoot_Main(&gMultibootProgramStruct);
+            // if (gMultibootProgramStruct.gcmb_field_2 != 1)/*
+            // {
+            BeginNormalPaletteFade(PALETTES_ALL, 0, 0, 16, RGB_BLACK);
+            gMain.state++;
+            // }
             break;
         case 141:
             if (UpdatePaletteFade())
                 break;
         CreateTask(Task_Scene1_Load, 0);
         SetMainCallback2(MainCB2_Intro);
-        if (gMultibootProgramStruct.gcmb_field_2 != 0)
-        {
-            if (gMultibootProgramStruct.gcmb_field_2 == 2)
-            {
-                // check the multiboot ROM header game code to see if we already did this
-                if (*(u32*)(EWRAM_START + 0xAC) == COLOSSEUM_GAME_CODE)
-                {
-                    CpuCopy16(&gMultiBootProgram_PokemonColosseum_Start, (void*)EWRAM_START, sizeof(gMultiBootProgram_PokemonColosseum_Start));
-                    *(u32*)(EWRAM_START + 0xAC) = COLOSSEUM_GAME_CODE;
-                }
-                GameCubeMultiBoot_ExecuteProgram(&gMultibootProgramStruct);
-            }
-        }
-        else
-        {
-            GameCubeMultiBoot_Quit();
-            SetSerialCallback(SerialCB);
-        }
+        // if (gMultibootProgramStruct.gcmb_field_2 != 0)
+        // {
+        //     if (gMultibootProgramStruct.gcmb_field_2 == 2)
+        //     {
+        //         // check the multiboot ROM header game code to see if we already did this
+        //         if (*(u32*)(EWRAM_START + 0xAC) == COLOSSEUM_GAME_CODE)
+        //         {
+        //             CpuCopy16(&gMultiBootProgram_PokemonColosseum_Start, (void*)EWRAM_START, sizeof(gMultiBootProgram_PokemonColosseum_Start));
+        //             *(u32*)(EWRAM_START + 0xAC) = COLOSSEUM_GAME_CODE;
+        //         }
+        //         GameCubeMultiBoot_ExecuteProgram(&gMultibootProgramStruct);
+        //     }
+        // }
+        // else
+        // {
+        GameCubeMultiBoot_Quit();
+        SetSerialCallback(SerialCB);
+        // }
         return 0;
     }
 

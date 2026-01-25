@@ -37,6 +37,10 @@
 #include "title_screen.h"
 #include "window.h"
 #include "mystery_gift_menu.h"
+#include "../include/constants/maps.h"
+#include "../include/constants/map_types.h"
+#include "../include/constants/map_groups.h"
+#include "../include/constants/layouts.h"
 
 /*
  * Main menu state machine
