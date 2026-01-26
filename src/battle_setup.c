@@ -1406,7 +1406,7 @@ const u8 *BattleSetup_GetScriptAddrAfterBattle(void)
     if (sTrainerBattleEndScript != NULL)
         return sTrainerBattleEndScript;
     else
-        return EventScript_TestSignpostMsg;
+        return EventScript_TryDoDoubleTrainerBattle;
 }
 
 const u8 *BattleSetup_GetTrainerPostBattleScript(void)
