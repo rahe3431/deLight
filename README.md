@@ -71,4 +71,11 @@ It builds the following ROM:
 
 To set up the repository, see [INSTALL.md](INSTALL.md).
 
+Note:
+  be sure to use --recursive flag when first cloning repo git clone --recursive https://github.com/rahe3431/deLight.git
+
+  in addition, the go programming language is a dependency for poryscript, use:  sudo apt-get install golang
+
+  
+
 For contacts and other pret projects, see [pret.github.io](https://pret.github.io/).
